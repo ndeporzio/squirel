@@ -63,25 +63,25 @@ def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 
 if __name__ == '__main__':
 	print('[main.py] Starting main.py')
-	
-	density = input('[main.py] Densities (y/n): ')
-	dists = input('[main.py] Distributions (y/n): ')
-	cmb = input('[main.py] CMB Sensitivity (y/n): ')
-	contour = input('[main.py] Countour Plot (y/n): ')
-	mpk = input('[main.py] Matter power spectrum (y/n): ')
-	appcontour = input('[main.py] Appendix contour (y/n): ')
-	nuonly = input('[main.py] Nu Appendix (y/n): ')
-	if density.lower()[0] == 'y':
-		cosmo_densities()
-	if dists.lower()[0] == 'y':
-		cosmo_distributions()
-	if cmb.lower()[0] == 'y':
-		cosmo_cmb_sensitivity()
-	if contour.lower()[0] == 'y':
-		cosmo_contour()
-	if mpk.lower()[0] == 'y':
-		cosmo_mpk()
-	if appcontour.lower()[0] == 'y':
-		cosmo_appendix_contour()
-	if nuonly.lower()[0] == 'y':
-		cosmo_appendix_nu()
+	cosmo_distributions()
+	# density = input('[main.py] Densities (y/n): ')
+	# dists = input('[main.py] Distributions (y/n): ')
+	# cmb = input('[main.py] CMB Sensitivity (y/n): ')
+	# contour = input('[main.py] Countour Plot (y/n): ')
+	# mpk = input('[main.py] Matter power spectrum (y/n): ')
+	# appcontour = input('[main.py] Appendix contour (y/n): ')
+	# nuonly = input('[main.py] Nu Appendix (y/n): ')
+	# if density.lower()[0] == 'y':
+	# 	cosmo_densities()
+	# if dists.lower()[0] == 'y':
+	# 	cosmo_distributions()
+	# if cmb.lower()[0] == 'y':
+	# 	cosmo_cmb_sensitivity()
+	# if contour.lower()[0] == 'y':
+	# 	cosmo_contour()
+	# if mpk.lower()[0] == 'y':
+	# 	cosmo_mpk()
+	# if appcontour.lower()[0] == 'y':
+	# 	cosmo_appendix_contour()
+	# if nuonly.lower()[0] == 'y':
+	# 	cosmo_appendix_nu()

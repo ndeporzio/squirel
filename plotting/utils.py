@@ -119,7 +119,6 @@ def LiMR_parameters(Delta_Neff,z_NR):
 		'RD': m_chi(T0_dict['RD'],z_NR,Q0_dict['RD'],Q1_dict['RD']),
 		'LN': m_chi(T0_dict['LN'],z_NR,Q0_dict['LN'],Q1_dict['LN']),
 	}
-	print(T0_dict,m_dict)
 
 def plot_distributions():
 	f_FD = lambda y : 1./(np.exp(y)+1)

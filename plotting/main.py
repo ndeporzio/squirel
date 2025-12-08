@@ -82,7 +82,7 @@ if __name__ == '__main__':
 		print('[main.py] Using default LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
 
 	LiMR_parameters(Delta_Neff,z_NR)
-
+	print(T0_dict)
 	# cosmo_distributions()
 
 	# density = input('[main.py] Densities (y/n): ')

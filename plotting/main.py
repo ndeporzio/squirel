@@ -1,6 +1,10 @@
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+rcParams.update({
+	"text.usetex": True,
+})
 
 def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 	fig = plt.figure(figsize=(14, 12))
@@ -8,6 +12,7 @@ def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 	ax = plt.subplot(2, 2, 1)
 
 	plot_distributions()
+	# Plot settings
 
 	set_xy_lims(xmin=1e-1, xmax=1e2, ymin=0., ymax=50.)
 	set_xy_scales(xscale='log', yscale='linear')
@@ -57,13 +62,16 @@ def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 	# 	transform=plt.gca().transAxes,
 	# 	fontsize=14,
 	# 	color='k')
-
+	rcParams.update({
+		"text.usetex": True,
+	})
 	print('[main.py] Saving:', plot_dir + figname)
 	plt.savefig(plot_dir + figname)
 
 if __name__ == '__main__':
 	print('[main.py] Starting main.py')
 	cosmo_distributions()
+
 	# density = input('[main.py] Densities (y/n): ')
 	# dists = input('[main.py] Distributions (y/n): ')
 	# cmb = input('[main.py] CMB Sensitivity (y/n): ')

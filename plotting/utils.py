@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import zeta
 import matplotlib as mpl
+# mpl.rcParams['text.usetex'] = True
+# mpl.rcParams['font.family'] = 'serif'
 
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 	plt.xlim(xmin, xmax)
@@ -10,6 +12,10 @@ def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 def add_xy_labels(xlabel=r'$m_\mathrm{lightest}\,\mathrm{[meV]}$', ylabel=r'$n_\nu^\mathrm{loc.}\,\mathrm{[cm}^{-3}\mathrm{]}$', fontsize=20):
 	plt.xlabel(xlabel, fontsize=fontsize)
 	plt.ylabel(ylabel, fontsize=fontsize)
+
+def set_xy_scales(xscale='linear', yscale='log'):
+	plt.xscale(xscale)
+	plt.yscale(yscale)
 
 HIGHP_LABEL = r'$\mathrm{High-}p_\nu$'
 LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
@@ -65,6 +71,7 @@ def plot_distributions():
 		c=cosmo_color('HEDR'), lw=2.2)
 	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * (temp_Gauss_func(0.0743352, 3.5, 0.508274, qarr) + temp_FD_func(qarr / 0.7003)) * 6 * qarr**2 / (2 * np.pi**2),
 		c=cosmo_color('LTM'), lw=2.2)
+
 
 def add_cosmo_cases():
 	xoff, yoff, offset = 0.15, -0.0, 0.03
@@ -150,3 +157,4 @@ def add_cosmo_cases():
 		fontsize=16,
 		color='k',
 		rotation=0)
+	

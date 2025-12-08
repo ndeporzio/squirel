@@ -77,12 +77,12 @@ if __name__ == '__main__':
 		log10z_NR = float(input('[main.py] Desired log10z_NR: '))
 	else:
 		Delta_Neff = 0.3
-		log10z_NR = 1e3
+		log10z_NR = 3
 		z_NR = pow(10,log10z_NR)
 		print('[main.py] Using default LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
 
 	LiMR_parameters(Delta_Neff,z_NR)
-	
+
 	# cosmo_distributions()
 
 	# density = input('[main.py] Densities (y/n): ')

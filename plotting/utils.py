@@ -1,0 +1,152 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import zeta
+import matplotlib as mpl
+
+def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
+	plt.xlim(xmin, xmax)
+	plt.ylim(ymin, ymax)
+
+def add_xy_labels(xlabel=r'$m_\mathrm{lightest}\,\mathrm{[meV]}$', ylabel=r'$n_\nu^\mathrm{loc.}\,\mathrm{[cm}^{-3}\mathrm{]}$', fontsize=20):
+	plt.xlabel(xlabel, fontsize=fontsize)
+	plt.ylabel(ylabel, fontsize=fontsize)
+
+HIGHP_LABEL = r'$\mathrm{High-}p_\nu$'
+LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
+LCDM_LABEL = r'$\Lambda\mathrm{CDM}$'
+
+def cosmo_color(case='LCDM'):
+    # colors_dict = {
+    #     'FD': '#dc267f',
+    #     'BE': '#785ef0',
+    #     'RD': '#648fff',
+    #     'LN': '#ffb000',
+    #     # '??': '#fe6100',
+    # }
+	colors_dict = {
+	 'LCDM': '#003f5c',
+	 'LEDR': '#58508d',
+	 'HE': '#bc5090',
+	 'HEDR': '#ff6361',
+	 'LTM': '#ffa600'
+	 }
+
+	try:
+		return colors_dict[case]
+	except:
+		# print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
+		# print('[utils.py] \t(1) Key: FD - FD distribution')
+		# print('[utils.py] \t(2) Key: BE - BE distribution')
+		# print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
+		# print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
+		print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
+		print('[utils.py] \t(1) Key: LCDM - LCDM with FD distribution')
+		print('[utils.py] \t(2) Key: LEDR - Low energy neutrinos with additional DR')
+		print('[utils.py] \t(3) Key: HE - High Energy neutrinos')
+		print('[utils.py] \t(4) Key: HEDR - High Energy neutrinos with additional DR')
+		print('[utils.py] \t(5) Key: LTM - Low temperature, but with additional Gaussian component')
+		return 'k'
+
+def plot_distributions():
+	temp_Gauss_func = lambda Amp,ystar,sigma,y : Amp * np.exp(-(y-ystar)**2/(2*sigma**2))
+	temp_FD_func    = lambda y : 1./(np.exp(y)+1)
+	qarr = np.geomspace(1e-2, 50., 10000)
+
+	Tnu0 = 1.95
+	K_TO_CM = 4.366
+
+	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * temp_FD_func(qarr) * 6 * qarr**2 / (2 * np.pi**2),
+			c=cosmo_color('LCDM'), lw=2.2)
+	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(33.8595, 0.1, 0.294218, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
+		c=cosmo_color('LEDR'), lw=2.2)
+	plt.plot(qarr, 0.40 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(0.0000161608, 30, 4.82113, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
+		c=cosmo_color('HE'),lw=2.2)
+	plt.plot(qarr, 0.40 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(0.000125406, 3.0, 8.82654, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
+		c=cosmo_color('HEDR'), lw=2.2)
+	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * (temp_Gauss_func(0.0743352, 3.5, 0.508274, qarr) + temp_FD_func(qarr / 0.7003)) * 6 * qarr**2 / (2 * np.pi**2),
+		c=cosmo_color('LTM'), lw=2.2)
+
+def add_cosmo_cases():
+	xoff, yoff, offset = 0.15, -0.0, 0.03
+	plt.text(0.2 - xoff, 0.90 - yoff,r"\boldmath{$\Lambda$}\textbf{CDM}",transform=plt.gca().transAxes,
+		fontsize=14,
+		color=cosmo_color('LCDM'),
+		rotation=0)
+	plt.text(0.35, 0.09, r"\boldmath{$\Lambda$}\textbf{CDM}",
+		transform=plt.gca().transAxes,
+		fontsize=10,
+		color=cosmo_color('LCDM'),
+		rotation=42)
+	plt.text(0.38 - xoff, 0.89 - yoff,r"$\sum m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^\nu = 3.044$",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color='k',
+		rotation=0)
+
+	plt.text(0.2 - xoff, 0.82 + offset - yoff,r"\textbf{L}\boldmath{$\nu$}\textbf{-DR}",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color=cosmo_color('LEDR'),
+		rotation=0)
+	plt.text(0.11, 0.09,r"\textbf{L}\boldmath{$\nu$}\textbf{-DR}",
+			transform=plt.gca().transAxes,
+		fontsize=10,
+		color=cosmo_color('LEDR'),
+		rotation=62)
+	plt.text(0.38 - xoff, 0.81 + offset - yoff,r"$\sum m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^\nu = 0.5$, $N_{\rm eff}^{\rm DR} = 2.544$",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color='k',
+		rotation=0)
+
+	plt.text(0.2 - xoff, 0.74 + 2 * offset - yoff, r"\textbf{H}\boldmath{$\nu$}",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color=cosmo_color('HE'),
+		rotation=0)
+	plt.text(0.77, 0.32, r"\textbf{H}\boldmath{$\nu$}",
+		transform=plt.gca().transAxes,
+		fontsize=12,
+		color=cosmo_color('HE'),
+		rotation=80)
+	plt.text(0.38 - xoff, 0.73 + 2 * offset - yoff,r"$\sum m_\nu = 1.20\,\mathrm{eV}$, $N_{\rm eff}^\nu = 3.044$",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color='k',
+		rotation=0)
+
+	plt.text(0.2 - xoff, 0.66 + 3 * offset - yoff,r"\textbf{H}\boldmath{$\nu$}\textbf{-DR}",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color=cosmo_color('HEDR'),
+		rotation=0)
+	plt.text(0.61, 0.09,r"\textbf{H}\boldmath{$\nu$}\textbf{-DR}",
+		transform=plt.gca().transAxes,
+		fontsize=10,
+		color=cosmo_color('HEDR'),
+		rotation=63)
+	plt.text(0.38 - xoff, 0.65 + 3 * offset - yoff,r"$\sum m_\nu = 1.20\,\mathrm{eV}$, $N_{\rm eff}^\nu = 1.5$, $N_{\rm eff}^{\rm DR} = 1.544$",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color='k',
+		rotation=0)
+
+	plt.text(0.2 - xoff, 0.58 + 4 * offset - yoff,r"\textbf{LT+Mid}",transform=plt.gca().transAxes,
+		fontsize=14,
+		color=cosmo_color('LTM'),
+		rotation=0)
+	plt.text(0.455,0.24,r"\textbf{LT+Mid}",transform=plt.gca().transAxes,
+		fontsize=10,
+		color=cosmo_color('LTM'),
+		rotation=83)
+	plt.text(0.38 - xoff, 0.57 + 4 * offset - yoff,r"$\sum  m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^{\nu} = 3.044$",
+		transform=plt.gca().transAxes,
+		fontsize=14,
+		color='k',
+		rotation=0)
+
+	plt.text(0.2 - xoff, 0.55 + 2 * offset - yoff,r"$\Omega_{\nu,0} / \Omega_{\mathrm{m},0} = 0.009$, $N_{\rm eff} = 3.044$",
+		transform=plt.gca().transAxes,
+		fontsize=16,
+		color='k',
+		rotation=0)

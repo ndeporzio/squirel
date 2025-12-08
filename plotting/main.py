@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 rcParams.update({
 	"text.usetex": True,
+	"font.family": "serif",
 })
 
 def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
@@ -11,7 +12,7 @@ def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 	
 	ax = plt.subplot(2, 2, 1)
 
-	plot_distributions()
+	plot_distributions(Delta_Neff,z_NR)
 	# Plot settings
 
 	set_xy_lims(xmin=1e-1, xmax=1e2, ymin=0., ymax=50.)
@@ -70,7 +71,19 @@ def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
 
 if __name__ == '__main__':
 	print('[main.py] Starting main.py')
-	cosmo_distributions()
+	usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
+	if usedef == 'n':
+		Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
+		log10z_NR = float(input('[main.py] Desired log10z_NR: '))
+	else:
+		Delta_Neff = 0.3
+		log10z_NR = 1e3
+		z_NR = pow(10,log10z_NR)
+		print('[main.py] Using default LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
+
+	LiMR_parameters(Delta_Neff,z_NR)
+	
+	# cosmo_distributions()
 
 	# density = input('[main.py] Densities (y/n): ')
 	# dists = input('[main.py] Distributions (y/n): ')

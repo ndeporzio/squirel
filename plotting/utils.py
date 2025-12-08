@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import zeta
 import matplotlib as mpl
-# mpl.rcParams['text.usetex'] = True
-# mpl.rcParams['font.family'] = 'serif'
+from scipy.integrate import quad
+from scipy import constants
 
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 	plt.xlim(xmin, xmax)
@@ -52,6 +52,84 @@ def cosmo_color(case='LCDM'):
 		print('[utils.py] \t(4) Key: HEDR - High Energy neutrinos with additional DR')
 		print('[utils.py] \t(5) Key: LTM - Low temperature, but with additional Gaussian component')
 		return 'k'
+	
+# defining distributions
+def f_FD(xi):
+	return 1./(np.exp(xi)+1)
+def f_BE(xi):
+	return 1./(np.exp(xi)-1)
+def f_RD(xi):
+	return 2.19*pow(xi,-5./2.)*np.exp(-0.74*pow(xi,2.))
+def f_LN(xi,sigma):
+	return 1./(xi*sigma*np.sqrt(2*np.pi))*np.exp(-pow(np.log(xi),2)/(2*pow(sigma,2)))
+
+# n-th moment of f(xi)
+def Qn(f,n,sigma=1):
+	if f in [f_FD,f_BE,f_RD]:
+		return quad(lambda xi: xi**(2+n)*f(xi), 0, np.inf)[0]
+	elif f == f_LN:
+		return quad(lambda xi: xi**(2+n)*f(xi,sigma), 0, np.inf)[0]
+	else: 
+		print('[utils.py] (ERROR) Distrib not recognised, assuming FD.')
+		return quad(lambda xi: xi**(2+n)*f_FD(xi), 0, np.inf)[0]
+
+# characteristic momentum from 1st moment and Delta Neff (in units of the photon temp)
+def T0chi(Q1,Delta_Neff,g):
+	T0nu = 1.95
+	return pow(Delta_Neff/(g/2)/(Q1/(7*np.pi**4/120)),1/4)*T0nu
+
+# mass in eV
+def m_chi(T0chi,z_NR,Q0,Q1):
+	K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
+	T0CMB = 2.7255
+	return T0chi*T0CMB*K_to_eV*(z_NR+1)*Q1/Q0
+	
+def LiMR_parameters(Delta_Neff,z_NR):
+	Q0_dict = {
+		'FD':Qn(f_FD,0),
+		'BE':Qn(f_BE,0),
+		'RD':Qn(f_RD,0),
+		'LN':Qn(f_LN,0,1.5),
+	}
+
+	Q1_dict = {
+		'FD':Qn(f_FD,1),
+		'BE':Qn(f_BE,1),
+		'RD':Qn(f_RD,1),
+		'LN':Qn(f_LN,1,1.5),
+	}
+
+	g_dict = {
+		'g':1,
+		'g':2,
+		'g':2,
+		'g':2,
+	}
+
+	T0_dict = {
+		'FD': T0chi(Q1_dict['FD'],Delta_Neff,2),
+		'BE': T0chi(Q1_dict['BE'],Delta_Neff,1),
+		'RD': T0chi(Q1_dict['RD'],Delta_Neff,2),
+		'LN': T0chi(Q1_dict['LN'],Delta_Neff,2),
+	}
+
+	m_dict = {
+		'FD': m_chi(T0_dict['FD'],z_NR,Q0_dict['FD'],Q1_dict['FD']),
+		'BE': m_chi(T0_dict['BE'],z_NR,Q0_dict['BE'],Q1_dict['BE']),
+		'RD': m_chi(T0_dict['RD'],z_NR,Q0_dict['RD'],Q1_dict['RD']),
+		'LN': m_chi(T0_dict['LN'],z_NR,Q0_dict['LN'],Q1_dict['LN']),
+	}
+	print(T0_dict,m_dict)
+
+def plot_distributions():
+	f_FD = lambda y : 1./(np.exp(y)+1)
+	f_BE = lambda y : 1./(np.exp(y)-1)
+	f_RD = lambda y : 1./pow(2*np.pi,3)*2.19*pow(y,-5./2.)*np.exp(-0.74*pow(y,2.))
+	f_LN = lambda sigma, y : 1./pow(2*np.pi,3)*1.0/(y*sigma*np.sqrt(2*np.pi))*np.exp(-pow(np.log(y),2)/(2*pow(sigma,2)))
+	qarr = np.geomspace(1e-2, 100., 20000)
+
+	Tnu0 = 1.95
+	K_TO_CM = 4.366
 
 def plot_distributions():
 	temp_Gauss_func = lambda Amp,ystar,sigma,y : Amp * np.exp(-(y-ystar)**2/(2*sigma**2))

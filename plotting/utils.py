@@ -4,6 +4,7 @@ from scipy.special import zeta
 import matplotlib as mpl
 from scipy.integrate import quad
 from scipy import constants
+T0CMB = 2.7255
 
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 	plt.xlim(xmin, xmax)
@@ -76,12 +77,11 @@ def Qn(f,n,sigma=1):
 # characteristic momentum from 1st moment and Delta Neff (in units of the photon temp)
 def T0chi(Q1,Delta_Neff,g):
 	T0nu = 1.95
-	return pow(Delta_Neff/(g/2)/(Q1/(7*np.pi**4/120)),1/4)*T0nu
+	return pow(Delta_Neff/(g/2)/(Q1/(7*np.pi**4/120)),1/4)*T0nu/T0CMB
 
 # mass in eV
 def m_chi(T0chi,z_NR,Q0,Q1):
 	K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
-	T0CMB = 2.7255
 	return T0chi*T0CMB*K_to_eV*(z_NR+1)*Q1/Q0
 	
 def LiMR_parameters(Delta_Neff,z_NR):

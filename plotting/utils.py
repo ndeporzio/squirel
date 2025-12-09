@@ -250,8 +250,10 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 	cosmo = Class()
 
     # Use default parameters
-	cosmo.set({
-		#'P_k_max_h/Mpc':10,
+	cosmo.set({'output':'tCl,pCl,lCl,mPk',
+			   'P_k_max_h/Mpc':10,
+			   'l_max_scalars':2500,
+			   'lensing': 'yes',
 			   'write_background':'yes',            # Write background parameter table
 			   'background_verbose': 3,
 			   'thermodynamics_verbose': 1,

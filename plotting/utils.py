@@ -4,6 +4,7 @@ from scipy.special import zeta
 import matplotlib as mpl
 from scipy.integrate import quad
 from scipy import constants
+from classy import Class
 T0CMB = 2.7255
 
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):

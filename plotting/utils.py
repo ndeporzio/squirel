@@ -10,53 +10,9 @@ import pickle
 import os 
 T0CMB = 2.7255
 
-def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
-	plt.xlim(xmin, xmax)
-	plt.ylim(ymin, ymax)
-
-def add_xy_labels(xlabel=r'$m_\mathrm{lightest}\,\mathrm{[meV]}$', ylabel=r'$n_\nu^\mathrm{loc.}\,\mathrm{[cm}^{-3}\mathrm{]}$', fontsize=20):
-	plt.xlabel(xlabel, fontsize=fontsize)
-	plt.ylabel(ylabel, fontsize=fontsize)
-
-def set_xy_scales(xscale='linear', yscale='log'):
-	plt.xscale(xscale)
-	plt.yscale(yscale)
-
-HIGHP_LABEL = r'$\mathrm{High-}p_\nu$'
-LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
-LCDM_LABEL = r'$\Lambda\mathrm{CDM}$'
-
-def cosmo_color(case='LCDM'):
-    # colors_dict = {
-    #     'FD': '#dc267f',
-    #     'BE': '#785ef0',
-    #     'RD': '#648fff',
-    #     'LN': '#ffb000',
-    #     # '??': '#fe6100',
-    # }
-	colors_dict = {
-	 'LCDM': '#003f5c',
-	 'LEDR': '#58508d',
-	 'HE': '#bc5090',
-	 'HEDR': '#ff6361',
-	 'LTM': '#ffa600'
-	 }
-
-	try:
-		return colors_dict[case]
-	except:
-		# print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
-		# print('[utils.py] \t(1) Key: FD - FD distribution')
-		# print('[utils.py] \t(2) Key: BE - BE distribution')
-		# print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
-		# print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
-		print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
-		print('[utils.py] \t(1) Key: LCDM - LCDM with FD distribution')
-		print('[utils.py] \t(2) Key: LEDR - Low energy neutrinos with additional DR')
-		print('[utils.py] \t(3) Key: HE - High Energy neutrinos')
-		print('[utils.py] \t(4) Key: HEDR - High Energy neutrinos with additional DR')
-		print('[utils.py] \t(5) Key: LTM - Low temperature, but with additional Gaussian component')
-		return 'k'
+#
+# Cosmology functions
+#
 	
 # defining distributions
 def f_FD(xi):
@@ -127,12 +83,141 @@ def LiMR_parameters(Delta_Neff,z_NR):
 	return T0_dict, m_dict
 
 def_T0_dict, def_m_dict = LiMR_parameters(0.3,1e3)
+	
+def fill_LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, output_dir='../data/distribution_data/'):
+	filename = output_dir + f'LiMR_parameters_DNeff={Delta_Neff}_zNR={z_NR}.pkl'
+	if os.path.exists(filename):
+		with open(filename, 'rb') as f:
+			params = pickle.load(f)
+		print('[utils.py] Loaded LiMR parameters from:', filename)
+	else:
+		params = LiMR_parameters(Delta_Neff, z_NR)
+		with open(filename, 'wb') as f:
+			pickle.dump(params, f)
+		print('[utils.py] Saved LiMR parameters to:', filename)
+	return params
+	
+def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
+	for case in ['LCDM', 'DR', 'FD', 'BE', 'RD', 'LN']:
+		filename = ''
+		if case == 'LCDM':
+			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
+		elif case == 'DR':
+			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
+		else:
+			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
+		if os.path.exists(filename):
+			with open(filename, 'rb') as f:
+				output_data = pickle.load(f)
+			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
+		else:
+			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
+		globals()[f'cosmo_{case}'] = output_data
+	
+def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
+	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
+	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
+	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
+	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
+	
+    # Initialize CLASS
+	cosmo = Class()
 
-def plot_distributions():
-	f_FD = lambda y : 1./(np.exp(y)+1)
-	f_BE = lambda y : 1./(np.exp(y)-1)
-	f_RD = lambda y : 1./pow(2*np.pi,3)*2.19*pow(y,-5./2.)*np.exp(-0.74*pow(y,2.))
-	f_LN = lambda sigma, y : 1./pow(2*np.pi,3)*1.0/(y*sigma*np.sqrt(2*np.pi))*np.exp(-pow(np.log(y),2)/(2*pow(sigma,2)))
+    # Use default parameters
+	cosmo.set({'output':'tCl,pCl,lCl,mPk',
+			   'P_k_max_1/Mpc':10,
+			   'l_max_scalars':2500,
+			   'lensing': 'yes',
+			   'write_background':'yes',            # Write background parameter table
+			   'background_verbose': 3,
+			   'thermodynamics_verbose': 1,
+			   'perturbations_verbose': 1,
+			   'input_verbose': 1,
+			   'transfer_verbose': 1,
+			   'primordial_verbose': 1,
+			   'harmonic_verbose': 1,
+			   'fourier_verbose': 1,
+			   'lensing_verbose': 1,
+			   'output_verbose': 1,
+			})
+	
+	print('[utils.py] Computing CLASS with', case, 'parameters.')
+    # Modify parameters according to case
+	if case == 'LCDM':
+		cosmo.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308,
+                   'omega_m':omega_m,
+                   })
+		root = output_dir+case+'_fixed='+fixed
+	elif case == 'DR':
+		cosmo.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308+Delta_Neff,
+                   'omega_m':omega_m,
+                   })
+		root = output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed
+	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
+		cosmo.set({'N_ncdm':2,
+                   'm_ncdm':[0.06, m_dict[case]],
+                   'T_ncdm':[0.71611, T0_dict[case]],
+                   'omega_m':omega_m,
+                   'N_ur':2.0308,
+                   })
+		root = output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed
+	else:
+		print('[utils.py] (ERROR) Case not recognised, using LCDM parameters.')
+		cosmo.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308,
+                   'omega_m':omega_m,
+                   })
+		root = output_dir+'LCDM_fixed='+fixed
+	if fixed == 'theta_s100':
+		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
+		cosmo.set({'100*theta_s':theta_s100})
+	
+	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
+	cosmo.set({
+		'write parameters': 'yes',
+		'root':root+'_',
+	})
+
+	cosmo.compute()
+
+	# save output to file
+	filename = root + '_output.pkl'
+	bg = cosmo.get_background()
+	unlensed_cls = cosmo.raw_cl()
+	lensed_cls = cosmo.lensed_cl()
+	kvec = np.logspace(-4,1,2500)
+	pk = [cosmo.pk(kk, 0.0) for kk in kvec]
+	derived = cosmo.get_current_derived_parameters(['rs_rec', 'H0', 'z_reio', 'a_eq', '100*theta_s', 'z_rec'])
+	output_data = {
+		'background': bg,
+		'unlensed_cls': unlensed_cls,
+		'lensed_cls': lensed_cls,
+		'kvec': kvec,
+		'pk': pk,
+		'derived': derived,
+	}
+	with open(filename, 'wb') as f:
+		pickle.dump(output_data, f)
+	print('[utils.py] CLASS output saved to:', filename)
+
+	cosmo.struct_cleanup()
+	cosmo.empty()
+
+	return output_data
+	
+#
+# Plotting functions
+#
+def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
+	fill_cosmos(Delta_Neff=0.3,z_NR=1e3)
 	qarr = np.geomspace(1e-2, 100., 20000)
 
 	Tnu0 = 1.95
@@ -243,102 +328,50 @@ def add_cosmo_cases():
 		color='k',
 		rotation=0)
 	
-def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
-	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
-	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
-	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
-	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
-	
-    # Initialize CLASS
-	cosmo = Class()
+def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
+	plt.xlim(xmin, xmax)
+	plt.ylim(ymin, ymax)
 
-    # Use default parameters
-	cosmo.set({'output':'tCl,pCl,lCl,mPk',
-			   'P_k_max_1/Mpc':10,
-			   'l_max_scalars':2500,
-			   'lensing': 'yes',
-			   'write_background':'yes',            # Write background parameter table
-			   'background_verbose': 3,
-			   'thermodynamics_verbose': 1,
-			   'perturbations_verbose': 1,
-			   'input_verbose': 1,
-			   'transfer_verbose': 1,
-			   'primordial_verbose': 1,
-			   'harmonic_verbose': 1,
-			   'fourier_verbose': 1,
-			   'lensing_verbose': 1,
-			   'output_verbose': 1,
-			})
-	
-	print('[utils.py] Computing CLASS with', case, 'parameters.')
-    # Modify parameters according to case
-	if case == 'LCDM':
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+case+'_fixed='+fixed
-	elif case == 'DR':
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308+Delta_Neff,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed
-	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
-		cosmo.set({'N_ncdm':2,
-                   'm_ncdm':[0.06, m_dict[case]],
-                   'T_ncdm':[0.71611, T0_dict[case]],
-                   'omega_m':omega_m,
-                   'N_ur':2.0308,
-                   })
-		root = output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed
-	else:
-		print('[utils.py] (ERROR) Case not recognised, computing CLASS with LCDM parameters.')
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+'LCDM_fixed='+fixed
-	if fixed == 'theta_s100':
-		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
-		cosmo.set({'100*theta_s':theta_s100})
-	
-	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
-	cosmo.set({
-		'write parameters': 'yes',
-		'root':root+'_',
-	})
+def add_xy_labels(xlabel=r'$m_\mathrm{lightest}\,\mathrm{[meV]}$', ylabel=r'$n_\nu^\mathrm{loc.}\,\mathrm{[cm}^{-3}\mathrm{]}$', fontsize=20):
+	plt.xlabel(xlabel, fontsize=fontsize)
+	plt.ylabel(ylabel, fontsize=fontsize)
 
-	cosmo.compute()
+def set_xy_scales(xscale='linear', yscale='log'):
+	plt.xscale(xscale)
+	plt.yscale(yscale)
 
-	# save output to file
-	filename = root + '_output.pkl'
-	bg = cosmo.get_background()
-	unlensed_cls = cosmo.raw_cl()
-	lensed_cls = cosmo.lensed_cl()
-	kvec = np.logspace(-4,1,2500)
-	pk = [cosmo.pk(kk, 0.0) for kk in kvec]
-	derived = cosmo.get_current_derived_parameters(['rs_rec', 'H0', 'z_reio', 'a_eq', '100*theta_s', 'z_rec'])
-	output_data = {
-		'background': bg,
-		'unlensed_cls': unlensed_cls,
-		'lensed_cls': lensed_cls,
-		'kvec': kvec,
-		'pk': pk,
-		'derived': derived,
-	}
-	with open(filename, 'wb') as f:
-		pickle.dump(output_data, f)
-	print('[utils.py] CLASS output saved to:', filename)
+HIGHP_LABEL = r'$\mathrm{High-}p_\nu$'
+LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
+LCDM_LABEL = r'$\Lambda\mathrm{CDM}$'
 
-	cosmo.struct_cleanup()
-	cosmo.empty()
+def cosmo_color(case='LCDM'):
+    # colors_dict = {
+    #     'FD': '#dc267f',
+    #     'BE': '#785ef0',
+    #     'RD': '#648fff',
+    #     'LN': '#ffb000',
+    #     # '??': '#fe6100',
+    # }
+	colors_dict = {
+	 'LCDM': '#003f5c',
+	 'LEDR': '#58508d',
+	 'HE': '#bc5090',
+	 'HEDR': '#ff6361',
+	 'LTM': '#ffa600'
+	 }
 
-	return output_data
-	
+	try:
+		return colors_dict[case]
+	except:
+		# print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
+		# print('[utils.py] \t(1) Key: FD - FD distribution')
+		# print('[utils.py] \t(2) Key: BE - BE distribution')
+		# print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
+		# print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
+		print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
+		print('[utils.py] \t(1) Key: LCDM - LCDM with FD distribution')
+		print('[utils.py] \t(2) Key: LEDR - Low energy neutrinos with additional DR')
+		print('[utils.py] \t(3) Key: HE - High Energy neutrinos')
+		print('[utils.py] \t(4) Key: HEDR - High Energy neutrinos with additional DR')
+		print('[utils.py] \t(5) Key: LTM - Low temperature, but with additional Gaussian component')
+		return 'k'

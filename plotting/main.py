@@ -84,8 +84,7 @@ if __name__ == '__main__':
 	z_NR = pow(10,log10z_NR)
 	print('[main.py] Using LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
 
-	T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR)
-	run_CLASS_and_save(case='LCDM')
+	fill_LiMR_parameters(Delta_Neff, z_NR)
 	# cosmo_comparison()
 	# cosmo_distributions()
 

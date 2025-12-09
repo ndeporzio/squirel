@@ -273,7 +273,7 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 		CLASS.set({'N_ncdm':2,
                    'm_ncdm':[0.06, m_dict[case]],
                    'T_ncdm':[0.71611, T0_dict[case]],
-                   'omega_m':omega_m,,
+                   'omega_m':omega_m,
 				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed,
                    'N_ur':2.0308,
                    })

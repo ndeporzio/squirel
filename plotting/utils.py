@@ -81,10 +81,8 @@ def LiMR_parameters(Delta_Neff,z_NR):
 	}
 
 	return T0_dict, m_dict
-
-def_T0_dict, def_m_dict = LiMR_parameters(0.3,1e3)
 	
-def fill_LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, output_dir='../data/distribution_data/'):
+def fill_LiMR_parameters(Delta_Neff=0.3, z_NR=1000, output_dir='../data/distribution_data/'):
 	filename = output_dir + f'LiMR_parameters_DNeff={Delta_Neff}_zNR={z_NR}.pkl'
 	if os.path.exists(filename):
 		with open(filename, 'rb') as f:
@@ -96,23 +94,8 @@ def fill_LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, output_dir='../data/distribut
 			pickle.dump(params, f)
 		print('[utils.py] Saved LiMR parameters to:', filename)
 	return params
-	
-def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
-	for case in ['LCDM', 'DR', 'FD', 'BE', 'RD', 'LN']:
-		filename = ''
-		if case == 'LCDM':
-			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
-		elif case == 'DR':
-			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
-		else:
-			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
-		if os.path.exists(filename):
-			with open(filename, 'rb') as f:
-				output_data = pickle.load(f)
-			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
-		else:
-			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
-		globals()[f'cosmo_{case}'] = output_data
+
+def_T0_dict, def_m_dict = fill_LiMR_parameters()
 	
 def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
@@ -213,6 +196,24 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 
 	return output_data
 	
+def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distribution_data/'):
+	for case in ['LCDM', 'DR', 'FD', 'BE', 'RD', 'LN']:
+		filename = ''
+		if case == 'LCDM':
+			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
+		elif case == 'DR':
+			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
+		else:
+			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
+		if os.path.exists(filename):
+			with open(filename, 'rb') as f:
+				output_data = pickle.load(f)
+			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
+		else:
+			T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR, output_dir)
+			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
+		globals()[f'cosmo_{case}'] = output_data
+
 #
 # Plotting functions
 #

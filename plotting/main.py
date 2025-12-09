@@ -7,7 +7,9 @@ rcParams.update({
 	"font.family": "serif",
 })
 
-def cosmo_distributions(plot_dir='plots/', figname='cosmo_distributions.pdf'):
+
+def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
+
 	fig = plt.figure(figsize=(14, 12))
 	
 	ax = plt.subplot(2, 2, 1)
@@ -81,8 +83,9 @@ if __name__ == '__main__':
 		z_NR = pow(10,log10z_NR)
 		print('[main.py] Using default LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
 
-	LiMR_parameters(Delta_Neff,z_NR)
-	print(T0_dict)
+	T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR)
+	run_CLASS(case='LCDM')
+	# cosmo_comparison()
 	# cosmo_distributions()
 
 	# density = input('[main.py] Densities (y/n): ')

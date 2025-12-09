@@ -89,14 +89,14 @@ def LiMR_parameters(Delta_Neff,z_NR):
 		'FD':Qn(f_FD,0),
 		'BE':Qn(f_BE,0),
 		'RD':Qn(f_RD,0),
-		'LN':Qn(f_LN,0,1.5),
+		'LN':Qn(f_LN,0,0.5),
 	}
 
 	Q1_dict = {
 		'FD':Qn(f_FD,1),
 		'BE':Qn(f_BE,1),
 		'RD':Qn(f_RD,1),
-		'LN':Qn(f_LN,1,1.5),
+		'LN':Qn(f_LN,1,0.5),
 	}
 
 	g_dict = {
@@ -119,6 +119,10 @@ def LiMR_parameters(Delta_Neff,z_NR):
 		'RD': m_chi(T0_dict['RD'],z_NR,Q0_dict['RD'],Q1_dict['RD']),
 		'LN': m_chi(T0_dict['LN'],z_NR,Q0_dict['LN'],Q1_dict['LN']),
 	}
+
+	return T0_dict, m_dict
+
+def_T0_dict, def_m_dict = LiMR_parameters(0.3,1e3)
 
 def plot_distributions():
 	f_FD = lambda y : 1./(np.exp(y)+1)
@@ -234,4 +238,58 @@ def add_cosmo_cases():
 		fontsize=16,
 		color='k',
 		rotation=0)
+	
+def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='data/distribution_data/', param_file='data/distribution_data/def_parameters'):
+	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
+	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
+	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
+	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
+	
+    # Initialize CLASS
+    CLASS = Class()
+
+    # Load default parameters
+	CLASS.set(input_file=param_file)
+	
+	print('[utils.py] Computing CLASS with', case, 'parameters.')
+    # Modify parameters according to case
+    if case == 'LCDM':
+        CLASS.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308,
+                   'omega_m':omega_m,
+				   'root': output_dir+case+'_fixed='+fixed,
+                   })
+    elif case == 'DR':
+        CLASS.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308+Delta_Neff,
+                   'omega_m':omega_m,
+				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed,
+                   })
+    elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
+        CLASS.set({'N_ncdm':2,
+                   'm_ncdm':[0.06, m_dict[case]],
+                   'T_ncdm':[0.71611, T0_dict[case]],
+                   'omega_m':omega_m,,
+				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed,
+                   'N_ur':2.0308,
+                   })
+    else:
+        print('[utils.py] (ERROR) Case not recognised, computing CLASS with LCDM parameters.')
+        CLASS.set({'N_ncdm':1,
+                   'm_ncdm':0.06,
+                   'T_ncdm':0.71611,
+                   'N_ur':2.0308,
+                   'omega_m':omega_m,
+				   'root': output_dir+case+'_fixed='+fixed,
+                   })
+    if fixed == 'theta_s100':
+		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
+		CLASS.set({'100*theta_s':theta_s100})
+    CLASS.compute()
+	CLASS.struct_cleanup()
+	CLASS.empty()
 	

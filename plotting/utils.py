@@ -327,7 +327,7 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 	derived = cosmo.get_current_derived_parameters(['rs_rec', 'H0', 'z_reio', 'a_eq', '100*theta_s', 'z_rec'])
 	output_data = {
 		'background': bg,
-		'unlensed_cls': cls,
+		'unlensed_cls': unlensed_cls,
 		'lensed_cls': lensed_cls,
 		'kvec': kvec,
 		'pk': pk,

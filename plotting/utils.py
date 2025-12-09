@@ -246,15 +246,15 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
 	
     # Initialize CLASS
-	CLASS = Class()
+	cosmo = Class()
 
     # Load default parameters
-	CLASS.set(input_file=param_file)
+	cosmo.set(input_file=param_file)
 	
 	print('[utils.py] Computing CLASS with', case, 'parameters.')
     # Modify parameters according to case
 	if case == 'LCDM':
-		CLASS.set({'N_ncdm':1,
+		cosmo.set({'N_ncdm':1,
                    'm_ncdm':0.06,
                    'T_ncdm':0.71611,
                    'N_ur':2.0308,
@@ -262,7 +262,7 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 				   'root': output_dir+case+'_fixed='+fixed,
                    })
 	elif case == 'DR':
-		CLASS.set({'N_ncdm':1,
+		cosmo.set({'N_ncdm':1,
                    'm_ncdm':0.06,
                    'T_ncdm':0.71611,
                    'N_ur':2.0308+Delta_Neff,
@@ -270,7 +270,7 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed,
                    })
 	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
-		CLASS.set({'N_ncdm':2,
+		cosmo.set({'N_ncdm':2,
                    'm_ncdm':[0.06, m_dict[case]],
                    'T_ncdm':[0.71611, T0_dict[case]],
                    'omega_m':omega_m,
@@ -279,7 +279,7 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
                    })
 	else:
 		print('[utils.py] (ERROR) Case not recognised, computing CLASS with LCDM parameters.')
-		CLASS.set({'N_ncdm':1,
+		cosmo.set({'N_ncdm':1,
                    'm_ncdm':0.06,
                    'T_ncdm':0.71611,
                    'N_ur':2.0308,
@@ -288,9 +288,9 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
                    })
 	if fixed == 'theta_s100':
 		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
-		CLASS.set({'100*theta_s':theta_s100})
+		cosmo.set({'100*theta_s':theta_s100})
 	
-	CLASS.compute()
-	CLASS.struct_cleanup()
-	CLASS.empty()
+	cosmo.compute()
+	cosmo.struct_cleanup()
+	cosmo.empty()
 	

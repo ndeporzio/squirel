@@ -240,7 +240,7 @@ def add_cosmo_cases():
 		color='k',
 		rotation=0)
 	
-def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='data/distribution_data/', param_file='data/distribution_data/def_parameters'):
+def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='../data/distribution_data/', param_file='../data/distribution_data/def_parameters'):
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
 	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)

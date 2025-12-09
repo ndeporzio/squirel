@@ -5,6 +5,9 @@ import matplotlib as mpl
 from scipy.integrate import quad
 from scipy import constants
 from classy import Class
+# modules for data I/O
+import pickle
+import os 
 T0CMB = 2.7255
 
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
@@ -240,7 +243,7 @@ def add_cosmo_cases():
 		color='k',
 		rotation=0)
 	
-def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='../data/distribution_data/'):
+def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='../data/distribution_data/'):
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
 	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
@@ -275,24 +278,24 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
                    'T_ncdm':0.71611,
                    'N_ur':2.0308,
                    'omega_m':omega_m,
-				   'root': output_dir+case+'_fixed='+fixed,
                    })
+		root = output_dir+case+'_fixed='+fixed
 	elif case == 'DR':
 		cosmo.set({'N_ncdm':1,
                    'm_ncdm':0.06,
                    'T_ncdm':0.71611,
                    'N_ur':2.0308+Delta_Neff,
                    'omega_m':omega_m,
-				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed,
                    })
+		root = output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed
 	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
 		cosmo.set({'N_ncdm':2,
                    'm_ncdm':[0.06, m_dict[case]],
                    'T_ncdm':[0.71611, T0_dict[case]],
                    'omega_m':omega_m,
-				   'root': output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed,
                    'N_ur':2.0308,
                    })
+		root = output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed
 	else:
 		print('[utils.py] (ERROR) Case not recognised, computing CLASS with LCDM parameters.')
 		cosmo.set({'N_ncdm':1,
@@ -300,13 +303,42 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
                    'T_ncdm':0.71611,
                    'N_ur':2.0308,
                    'omega_m':omega_m,
-				   'root': output_dir+case+'_fixed='+fixed,
                    })
+		root = output_dir+'LCDM_fixed='+fixed
 	if fixed == 'theta_s100':
 		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
 		cosmo.set({'100*theta_s':theta_s100})
 	
+	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
+	cosmo.set({
+		'write parameters': 'yes',
+		'root':root,
+	})
+
 	cosmo.compute()
+
+	# save output to file
+	filename = root + '_output.pkl'
+	bg = cosmo.get_background()
+	unlensed_cls = cosmo.raw_cl()
+	lensed_cls = cosmo.lensed_cl()
+	kvec = np.logspace(-4,1,2500)
+	pk = [cosmo.pk(kk, 0.0) for kk in kvec]
+	derived = cosmo.get_current_derived_parameters(['rs_rec', 'H0', 'z_reio', 'a_eq', '100*theta_s', 'z_rec'])
+	output_data = {
+		'background': bg,
+		'unlensed_cls': cls,
+		'lensed_cls': lensed_cls,
+		'kvec': kvec,
+		'pk': pk,
+		'derived': derived,
+	}
+	with open(filename, 'wb') as f:
+		pickle.dump(output_data, f)
+	print('[utils.py] CLASS output saved to:', filename)
+	
 	cosmo.struct_cleanup()
 	cosmo.empty()
+
+	return output_data
 	

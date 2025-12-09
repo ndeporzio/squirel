@@ -250,7 +250,7 @@ def run_CLASS(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_
 	cosmo = Class()
 
     # Load default parameters
-	cosmo.set(input_file=param_file)
+	cosmo.set(param_file)
 	
 	print('[utils.py] Computing CLASS with', case, 'parameters.')
     # Modify parameters according to case

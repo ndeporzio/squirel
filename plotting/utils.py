@@ -243,7 +243,7 @@ def add_cosmo_cases():
 		color='k',
 		rotation=0)
 	
-def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='Hubble', output_dir='../data/distribution_data/'):
+def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
 	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
@@ -254,7 +254,7 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 
     # Use default parameters
 	cosmo.set({'output':'tCl,pCl,lCl,mPk',
-			   'P_k_max_h/Mpc':10,
+			   'P_k_max_1/Mpc':10,
 			   'l_max_scalars':2500,
 			   'lensing': 'yes',
 			   'write_background':'yes',            # Write background parameter table
@@ -312,7 +312,7 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
 	cosmo.set({
 		'write parameters': 'yes',
-		'root':root,
+		'root':root+'_',
 	})
 
 	cosmo.compute()
@@ -336,7 +336,7 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 	with open(filename, 'wb') as f:
 		pickle.dump(output_data, f)
 	print('[utils.py] CLASS output saved to:', filename)
-	
+
 	cosmo.struct_cleanup()
 	cosmo.empty()
 

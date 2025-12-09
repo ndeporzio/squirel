@@ -2,6 +2,7 @@ from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
+from classy import Class
 rcParams.update({
 	"text.usetex": True,
 	"font.family": "serif",

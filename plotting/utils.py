@@ -243,7 +243,9 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			xi_array, 
 			d_rhoNR_dlogq(xi_array),
 			c=cosmo_color(case), 
-			lw=2.2)
+			lw=2.2,
+			label=case)
+	plt.legend(fontsize=14)
 
 
 def add_cosmo_cases():

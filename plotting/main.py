@@ -27,13 +27,13 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	plot_distributions(Delta_Neff,z_NR)
 	# Plot settings
 
-	set_xy_lims(xmin=1e-1, xmax=1e2, ymin=0., ymax=50.)
+	set_xy_lims(xmin=1e-1, xmax=1e2, ymin=0., ymax=5.)
 	set_xy_scales(xscale='log', yscale='linear')
 
 	ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")
 	ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\nu}{\mathrm{d} \log q_\nu} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 
-	add_cosmo_cases()
+	# add_cosmo_cases()
 
 	# ax = plt.subplot(2, 2, 2)
 

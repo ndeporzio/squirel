@@ -9,6 +9,7 @@ from classy import Class
 import pickle
 import os 
 T0CMB = 2.7255
+nu_factor = (4/11)**(1/3)  # T_nu0 (instantaneous decoupling) / T_CMB0
 K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
 hbar = constants.physical_constants['reduced Planck constant in eV s'][0]
 c = constants.speed_of_light
@@ -40,8 +41,7 @@ def Qn(f,n,sigma=1):
 
 # characteristic momentum from 1st moment and Delta Neff (in units of the photon temp)
 def T0chi(Q1,Delta_Neff,g):
-	T0nu = 1.95
-	return pow(Delta_Neff/(g/2)/(Q1/(7*np.pi**4/120)),1/4)*T0nu/T0CMB
+	return pow(Delta_Neff/(g/2)/(Q1/(7*np.pi**4/120)),1/4)*nu_factor # in units of T_CMB0 for CLASS
 
 # mass in eV
 def m_chi(T0chi,z_NR,Q0,Q1):
@@ -75,13 +75,12 @@ def g_dict():
 def LiMR_parameters(Delta_Neff,z_NR):
 	Q0s = Q0_dict()
 	Q1s	= Q1_dict()
-	gs = g_dict()
 
 	T0_dict = {
-		'FD': T0chi(Q0s['FD'],Delta_Neff,2),
-		'BE': T0chi(Q0s['BE'],Delta_Neff,1),
-		'RD': T0chi(Q0s['RD'],Delta_Neff,2),
-		'LN': T0chi(Q0s['LN'],Delta_Neff,2),
+		'FD': T0chi(Q1s['FD'],Delta_Neff,2),
+		'BE': T0chi(Q1s['BE'],Delta_Neff,1),
+		'RD': T0chi(Q1s['RD'],Delta_Neff,2),
+		'LN': T0chi(Q1s['LN'],Delta_Neff,2),
 	}
 
 	m_dict = {
@@ -152,15 +151,15 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
                    'N_ur':2.0308+Delta_Neff,
                    'omega_m':omega_m,
                    })
-		root = output_dir+case+'_DNeff='+Delta_Neff+'_fixed='+fixed
+		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed
 	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
 		cosmo.set({'N_ncdm':2,
-                   'm_ncdm':[0.06, m_dict[case]],
-                   'T_ncdm':[0.71611, T0_dict[case]],
+                   'm_ncdm':str(m_dict[case])+', 0.06',
+                   'T_ncdm':str(T0_dict[case])+', 0.71611',
                    'omega_m':omega_m,
                    'N_ur':2.0308,
                    })
-		root = output_dir+case+'_DNeff='+Delta_Neff+'_zNR='+z_NR+'_fixed='+fixed
+		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed
 	else:
 		print('[utils.py] (ERROR) Case not recognised, using LCDM parameters.')
 		cosmo.set({'N_ncdm':1,
@@ -208,7 +207,7 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 	return output_data
 	
 def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distribution_data/'):
-	for case in ['LCDM', 'DR', 'FD', 'BE', 'RD', 'LN']:
+	for case in ['LCDM', 'DR', 'FD']:
 		filename = ''
 		if case == 'LCDM':
 			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
@@ -249,6 +248,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
 		print('[utils.py] Characteristic parameters for', case, ': T0 =', T0_dict[case], 'K, m =', m_dict[case], 'eV')
 	plt.legend(fontsize=14)
+
 
 
 def add_cosmo_cases():

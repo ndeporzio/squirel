@@ -9,11 +9,15 @@ from classy import Class
 import pickle
 import os 
 T0CMB = 2.7255
+K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
+hbar = constants.physical_constants['reduced Planck constant in eV s'][0]
+c = constants.speed_of_light
+eV_to_cm = (hbar * c * 1e2)**(-1)  # eV to cm^-1
 
 #
 # Cosmology functions
 #
-	
+
 # defining distributions
 def f_FD(xi):
 	return 1./(np.exp(xi)+1)
@@ -43,28 +47,35 @@ def T0chi(Q1,Delta_Neff,g):
 def m_chi(T0chi,z_NR,Q0,Q1):
 	K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
 	return T0chi*T0CMB*K_to_eV*(z_NR+1)*Q1/Q0
-	
-def LiMR_parameters(Delta_Neff,z_NR):
-	Q0_dict = {
+
+def Q0_dict():
+	return {
 		'FD':Qn(f_FD,0),
 		'BE':Qn(f_BE,0),
 		'RD':Qn(f_RD,0),
 		'LN':Qn(f_LN,0,0.5),
 	}
 
-	Q1_dict = {
+def Q1_dict():
+	return {
 		'FD':Qn(f_FD,1),
 		'BE':Qn(f_BE,1),
 		'RD':Qn(f_RD,1),
 		'LN':Qn(f_LN,1,0.5),
 	}
 
-	g_dict = {
-		'g':1,
-		'g':2,
-		'g':2,
-		'g':2,
+def g_dict():
+	return {
+		'FD':1,
+		'BE':2,
+		'RD':2,
+		'LN':2,
 	}
+	
+def LiMR_parameters(Delta_Neff,z_NR):
+	Q0s = Q0_dict()
+	Q1s	= Q1_dict()
+	gs = g_dict()
 
 	T0_dict = {
 		'FD': T0chi(Q1_dict['FD'],Delta_Neff,2),
@@ -218,30 +229,17 @@ def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distrib
 # Plotting functions
 #
 def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
-	fill_cosmos(Delta_Neff=0.3,z_NR=1e3)
-	qarr = np.geomspace(1e-2, 100., 20000)
+	T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR)
+	gs = g_dict()
+	xi_array = np.geomspace(1e-2, 100., 20000)
 
-	Tnu0 = 1.95
-	K_TO_CM = 4.366
-
-def plot_distributions():
-	temp_Gauss_func = lambda Amp,ystar,sigma,y : Amp * np.exp(-(y-ystar)**2/(2*sigma**2))
-	temp_FD_func    = lambda y : 1./(np.exp(y)+1)
-	qarr = np.geomspace(1e-2, 50., 10000)
-
-	Tnu0 = 1.95
-	K_TO_CM = 4.366
-
-	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * temp_FD_func(qarr) * 6 * qarr**2 / (2 * np.pi**2),
-			c=cosmo_color('LCDM'), lw=2.2)
-	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(33.8595, 0.1, 0.294218, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
-		c=cosmo_color('LEDR'), lw=2.2)
-	plt.plot(qarr, 0.40 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(0.0000161608, 30, 4.82113, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
-		c=cosmo_color('HE'),lw=2.2)
-	plt.plot(qarr, 0.40 * qarr * Tnu0**3 * K_TO_CM**3 * temp_Gauss_func(0.000125406, 3.0, 8.82654, qarr) * 6 * qarr**2 / (2 * np.pi**2), 
-		c=cosmo_color('HEDR'), lw=2.2)
-	plt.plot(qarr, 0.04 * qarr * Tnu0**3 * K_TO_CM**3 * (temp_Gauss_func(0.0743352, 3.5, 0.508274, qarr) + temp_FD_func(qarr / 0.7003)) * 6 * qarr**2 / (2 * np.pi**2),
-		c=cosmo_color('LTM'), lw=2.2)
+	for case in ['FD', 'BE', 'RD', 'LN']:
+		d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+		plt.plot(
+			xi_array, 
+			d_rhoNR_dlogq(xi_array),
+			c=cosmo_color(case), 
+			lw=2.2)
 
 
 def add_cosmo_cases():
@@ -346,33 +344,20 @@ LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
 LCDM_LABEL = r'$\Lambda\mathrm{CDM}$'
 
 def cosmo_color(case='LCDM'):
-    # colors_dict = {
-    #     'FD': '#dc267f',
-    #     'BE': '#785ef0',
-    #     'RD': '#648fff',
-    #     'LN': '#ffb000',
-    #     # '??': '#fe6100',
-    # }
 	colors_dict = {
-	 'LCDM': '#003f5c',
-	 'LEDR': '#58508d',
-	 'HE': '#bc5090',
-	 'HEDR': '#ff6361',
-	 'LTM': '#ffa600'
-	 }
-
+        'FD': '#dc267f',
+        'BE': '#785ef0',
+        'RD': '#648fff',
+        'LN': '#ffb000',
+        # '??': '#fe6100',
+    }
+	
 	try:
 		return colors_dict[case]
 	except:
-		# print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
-		# print('[utils.py] \t(1) Key: FD - FD distribution')
-		# print('[utils.py] \t(2) Key: BE - BE distribution')
-		# print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
-		# print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
 		print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
-		print('[utils.py] \t(1) Key: LCDM - LCDM with FD distribution')
-		print('[utils.py] \t(2) Key: LEDR - Low energy neutrinos with additional DR')
-		print('[utils.py] \t(3) Key: HE - High Energy neutrinos')
-		print('[utils.py] \t(4) Key: HEDR - High Energy neutrinos with additional DR')
-		print('[utils.py] \t(5) Key: LTM - Low temperature, but with additional Gaussian component')
+		print('[utils.py] \t(1) Key: FD - FD distribution')
+		print('[utils.py] \t(2) Key: BE - BE distribution')
+		print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
+		print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
 		return 'k'

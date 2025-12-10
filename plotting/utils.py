@@ -235,7 +235,7 @@ def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distrib
 def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR)
 	gs = g_dict()
-	xi_array = np.geomspace(1e-5, 100., 20000)
+	xi_array = np.geomspace(1e-5, 1e8, 40000)
 	ymax = 0.
 
 	for case in ['FD', 'BE', 'RD', 'LNwide', 'LNsharp']:

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import zeta
 import matplotlib as mpl
-from scipy.integrate import quad
+import scipy.integrate as integrate
 from scipy import constants
 from classy import Class
 # modules for data I/O
@@ -31,12 +31,12 @@ def f_LN(xi,sigma):
 # n-th moment of f(xi)
 def Qn(f,n,sigma=1):
 	if f in [f_FD,f_BE,f_RD]:
-		return quad(lambda xi: xi**(2+n)*f(xi), 0, np.inf)[0]
+		return integrate.quad(lambda xi: xi**(2+n)*f(xi), 0, np.inf)[0]
 	elif f == f_LN:
-		return quad(lambda xi: xi**(2+n)*f(xi,sigma), 0, np.inf)[0]
+		return integrate.quad(lambda xi: xi**(2+n)*f(xi,sigma), 0, np.inf)[0]
 	else: 
 		print('[utils.py] (ERROR) Distrib not recognised, assuming FD.')
-		return quad(lambda xi: xi**(2+n)*f_FD(xi), 0, np.inf)[0]
+		return integrate.quad(lambda xi: xi**(2+n)*f_FD(xi), 0, np.inf)[0]
 
 # characteristic momentum from 1st moment and Delta Neff (in units of the photon temp)
 def T0chi(Q1,Delta_Neff,g):
@@ -245,6 +245,8 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			c=cosmo_color(case), 
 			lw=2.2,
 			label=case)
+		area = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
+		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
 	plt.legend(fontsize=14)
 
 

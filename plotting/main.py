@@ -31,7 +31,7 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 
 	#ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")
 	ax.set_xlabel(r"$\xi_\chi \equiv q_\chi/T_\chi^0$")
-	ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\xi}{\mathrm{d} \log \xi_\chi} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
+	ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\chi}{\mathrm{d} \log \xi_\chi} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 	#ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\nu}{\mathrm{d} \log q_\nu} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 
 	# add_cosmo_cases()

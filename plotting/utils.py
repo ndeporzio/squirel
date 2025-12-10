@@ -247,8 +247,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			label=case)
 		area = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
 		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
-		area = integrate.simps(d_rhoNR_dlogq(xi_array)*1/xi_array, xi_array)
-		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
+		print('[utils.py] Characteristic parameters for', case, ': T0 =', T0_dict[case], 'K, m =', m_dict[case], 'eV')
 	plt.legend(fontsize=14)
 
 

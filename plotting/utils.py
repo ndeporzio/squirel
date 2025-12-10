@@ -234,7 +234,11 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	xi_array = np.geomspace(1e-2, 100., 20000)
 
 	for case in ['FD', 'BE', 'RD', 'LN']:
-		d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+		if case != 'LN':
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+		else:
+			sigma = 0.5
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
 		plt.plot(
 			xi_array, 
 			d_rhoNR_dlogq(xi_array),

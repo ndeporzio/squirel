@@ -231,6 +231,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR)
 	gs = g_dict()
 	xi_array = np.geomspace(1e-5, 100., 20000)
+	ymax = 0.
 
 	for case in ['FD', 'BE', 'RD', 'LN']:
 		if case != 'LN':
@@ -244,10 +245,14 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			c=cosmo_color(case), 
 			lw=2.2,
 			label=case)
+		peak_value = np.max(d_rhoNR_dlogq(xi_array))
+		if peak_value > ymax:
+			ymax = peak_value
 		area = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
-		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
 	plt.legend(fontsize=14)
 
+	ymax = 10**(np.ceil(np.log10(ymax)))
+	return ymax
 
 
 def add_cosmo_cases():

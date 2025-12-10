@@ -66,8 +66,8 @@ def Q1_dict():
 
 def g_dict():
 	return {
-		'FD':1,
-		'BE':2,
+		'FD':2,
+		'BE':1,
 		'RD':2,
 		'LN':2,
 	}
@@ -231,7 +231,7 @@ def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distrib
 def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR)
 	gs = g_dict()
-	xi_array = np.geomspace(1e-2, 100., 20000)
+	xi_array = np.geomspace(1e-5, 100., 20000)
 
 	for case in ['FD', 'BE', 'RD', 'LN']:
 		if case != 'LN':

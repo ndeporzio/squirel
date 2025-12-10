@@ -53,7 +53,8 @@ def Q0_dict():
 		'FD':Qn(f_FD,0),
 		'BE':Qn(f_BE,0),
 		'RD':Qn(f_RD,0),
-		'LN':Qn(f_LN,0,0.5),
+		'LNwide':Qn(f_LN,0,1.5),
+		'LNsharp':Qn(f_LN,0,0.04),
 	}
 
 def Q1_dict():
@@ -61,7 +62,8 @@ def Q1_dict():
 		'FD':Qn(f_FD,1),
 		'BE':Qn(f_BE,1),
 		'RD':Qn(f_RD,1),
-		'LN':Qn(f_LN,1,0.5),
+		'LNwide':Qn(f_LN,1,1.5),
+		'LNsharp':Qn(f_LN,1,0.04),
 	}
 
 def g_dict():
@@ -69,7 +71,8 @@ def g_dict():
 		'FD':2,
 		'BE':1,
 		'RD':2,
-		'LN':2,
+		'LNwide':2,
+		'LNsharp':2,
 	}
 	
 def LiMR_parameters(Delta_Neff,z_NR):
@@ -80,14 +83,16 @@ def LiMR_parameters(Delta_Neff,z_NR):
 		'FD': T0chi(Q1s['FD'],Delta_Neff,2),
 		'BE': T0chi(Q1s['BE'],Delta_Neff,1),
 		'RD': T0chi(Q1s['RD'],Delta_Neff,2),
-		'LN': T0chi(Q1s['LN'],Delta_Neff,2),
+		'LNwide': T0chi(Q1s['LNwide'],Delta_Neff,2),
+		'LNsharp': T0chi(Q1s['LNsharp'],Delta_Neff,2),
 	} # charactristic momentum in units of T_CMB0 (NOT KELVIN!)
 
 	m_dict = {
 		'FD': m_chi(T0_dict['FD'],z_NR,Q0s['FD'],Q1s['FD']),
 		'BE': m_chi(T0_dict['BE'],z_NR,Q0s['BE'],Q1s['BE']),
 		'RD': m_chi(T0_dict['RD'],z_NR,Q0s['RD'],Q1s['RD']),
-		'LN': m_chi(T0_dict['LN'],z_NR,Q0s['LN'],Q1s['LN']),
+		'LNwide': m_chi(T0_dict['LNwide'],z_NR,Q0s['LNwide'],Q1s['LNwide']),
+		'LNsharp': m_chi(T0_dict['LNsharp'],z_NR,Q0s['LNsharp'],Q1s['LNsharp']),
 	} # LiMR mass in eV
 
 	return T0_dict, m_dict
@@ -233,12 +238,15 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	xi_array = np.geomspace(1e-5, 100., 20000)
 	ymax = 0.
 
-	for case in ['FD', 'BE', 'RD', 'LN']:
-		if case != 'LN':
-			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
-		else:
-			sigma = 0.5
+	for case in ['FD', 'BE', 'RD', 'LNwide', 'LNsharp']:
+		if case == 'LNwide':
+			sigma = 1.5
 			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
+		elif case == 'LNsharp':
+			sigma = 0.04
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
+		else:
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
 		plt.plot(
 			xi_array, 
 			d_rhoNR_dlogq(xi_array),
@@ -363,7 +371,8 @@ def cosmo_color(case='LCDM'):
         'FD': '#dc267f',
         'BE': '#785ef0',
         'RD': '#648fff',
-        'LN': '#ffb000',
+        'LNwide': '#ffb000',
+		'LNsharp': '#fe6100',
         # '??': '#fe6100',
     }
 	

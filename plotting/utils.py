@@ -81,14 +81,14 @@ def LiMR_parameters(Delta_Neff,z_NR):
 		'BE': T0chi(Q1s['BE'],Delta_Neff,1),
 		'RD': T0chi(Q1s['RD'],Delta_Neff,2),
 		'LN': T0chi(Q1s['LN'],Delta_Neff,2),
-	}
+	} # charactristic momentum in units of T_CMB0 (NOT KELVIN!)
 
 	m_dict = {
 		'FD': m_chi(T0_dict['FD'],z_NR,Q0s['FD'],Q1s['FD']),
 		'BE': m_chi(T0_dict['BE'],z_NR,Q0s['BE'],Q1s['BE']),
 		'RD': m_chi(T0_dict['RD'],z_NR,Q0s['RD'],Q1s['RD']),
 		'LN': m_chi(T0_dict['LN'],z_NR,Q0s['LN'],Q1s['LN']),
-	}
+	} # LiMR mass in eV
 
 	return T0_dict, m_dict
 	
@@ -232,12 +232,12 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	gs = g_dict()
 	xi_array = np.geomspace(1e-5, 100., 20000)
 
-	for case in ['FD', 'BE', 'RD', 'LN']:
+	for case in ['FD']:
 		if case != 'LN':
-			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * 3*gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
 		else:
 			sigma = 0.5
-			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
+			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
 		plt.plot(
 			xi_array, 
 			d_rhoNR_dlogq(xi_array),
@@ -245,9 +245,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			lw=2.2,
 			label=case)
 		area = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
-		print('checkig d_rhoNR/dlogq at q=30 for', case, ':', d_rhoNR_dlogq(3.), 'eV cm^-3')
 		print('area under d_rhoNR/dlogq for', case, ':', area, 'eV cm^-3')
-		print('[utils.py] Characteristic parameters for', case, ': T0 =', T0_dict[case], 'K, m =', m_dict[case], 'eV')
 	plt.legend(fontsize=14)
 
 

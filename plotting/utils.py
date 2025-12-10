@@ -251,8 +251,10 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		area = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
 	plt.legend(fontsize=14)
 
-	ymax = 10**(np.ceil(np.log10(ymax)))
-	return ymax
+	ymax = ymax / 0.8
+	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))
+	
+	return ymax_rounded
 
 
 def add_cosmo_cases():

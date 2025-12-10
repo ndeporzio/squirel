@@ -54,7 +54,7 @@ def Q0_dict():
 		'BE':Qn(f_BE,0),
 		'RD':Qn(f_RD,0),
 		'LNwide':Qn(f_LN,0,1.5),
-		'LNsharp':Qn(f_LN,0,0.04),
+		'LNsharp':Qn(f_LN,0,0.1),
 	}
 
 def Q1_dict():
@@ -63,7 +63,7 @@ def Q1_dict():
 		'BE':Qn(f_BE,1),
 		'RD':Qn(f_RD,1),
 		'LNwide':Qn(f_LN,1,1.5),
-		'LNsharp':Qn(f_LN,1,0.04),
+		'LNsharp':Qn(f_LN,1,0.1),
 	}
 
 def g_dict():
@@ -243,7 +243,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 			sigma = 1.5
 			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
 		elif case == 'LNsharp':
-			sigma = 0.04
+			sigma = 0.1
 			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * f_LN(xi,sigma) * xi**3
 		else:
 			d_rhoNR_dlogq = lambda xi : m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3

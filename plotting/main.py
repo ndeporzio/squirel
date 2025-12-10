@@ -12,12 +12,11 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
 	if usedef == 'n':
 		Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
-		log10z_NR = float(input('[main.py] Desired log10z_NR: '))
+		log10z_NR = float(input('[main.py] Desired z_NR: '))
 	else:
 		Delta_Neff = 0.3
-		log10z_NR = 3
+		z_NR = 1000
 
-	z_NR = pow(10,log10z_NR)
 	print('[main.py] Using LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
 
 	fig = plt.figure(figsize=(14, 12))
@@ -27,7 +26,7 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	plot_distributions(Delta_Neff,z_NR)
 	# Plot settings
 
-	set_xy_lims(xmin=1e-5, xmax=1e2, ymin=0., ymax=5.)
+	set_xy_lims(xmin=1e-5, xmax=1e2, ymin=0., ymax=50.)
 	set_xy_scales(xscale='log', yscale='linear')
 
 	ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")

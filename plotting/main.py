@@ -26,7 +26,7 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	ymax = plot_distributions(Delta_Neff,z_NR)
 	# Plot settings
 
-	set_xy_lims(xmin=1e-3, xmax=1e4, ymin=1e-4., ymax=1e3)
+	set_xy_lims(xmin=1e-3, xmax=1e4, ymin=1e-4, ymax=1e3)
 	set_xy_scales(xscale='log', yscale='log')
 
 	#ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")

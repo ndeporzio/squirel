@@ -78,17 +78,17 @@ def LiMR_parameters(Delta_Neff,z_NR):
 	gs = g_dict()
 
 	T0_dict = {
-		'FD': T0chi(Q1_dict['FD'],Delta_Neff,2),
-		'BE': T0chi(Q1_dict['BE'],Delta_Neff,1),
-		'RD': T0chi(Q1_dict['RD'],Delta_Neff,2),
-		'LN': T0chi(Q1_dict['LN'],Delta_Neff,2),
+		'FD': T0chi(Q0s['FD'],Delta_Neff,2),
+		'BE': T0chi(Q0s['BE'],Delta_Neff,1),
+		'RD': T0chi(Q0s['RD'],Delta_Neff,2),
+		'LN': T0chi(Q0s['LN'],Delta_Neff,2),
 	}
 
 	m_dict = {
-		'FD': m_chi(T0_dict['FD'],z_NR,Q0_dict['FD'],Q1_dict['FD']),
-		'BE': m_chi(T0_dict['BE'],z_NR,Q0_dict['BE'],Q1_dict['BE']),
-		'RD': m_chi(T0_dict['RD'],z_NR,Q0_dict['RD'],Q1_dict['RD']),
-		'LN': m_chi(T0_dict['LN'],z_NR,Q0_dict['LN'],Q1_dict['LN']),
+		'FD': m_chi(T0_dict['FD'],z_NR,Q0s['FD'],Q1s['FD']),
+		'BE': m_chi(T0_dict['BE'],z_NR,Q0s['BE'],Q1s['BE']),
+		'RD': m_chi(T0_dict['RD'],z_NR,Q0s['RD'],Q1s['RD']),
+		'LN': m_chi(T0_dict['LN'],z_NR,Q0s['LN'],Q1s['LN']),
 	}
 
 	return T0_dict, m_dict

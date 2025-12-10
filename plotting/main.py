@@ -12,7 +12,7 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
 	if usedef == 'n':
 		Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
-		log10z_NR = float(input('[main.py] Desired z_NR: '))
+		z_NR = float(input('[main.py] Desired z_NR: '))
 	else:
 		Delta_Neff = 0.3
 		z_NR = 1000

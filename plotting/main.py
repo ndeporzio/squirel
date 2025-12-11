@@ -23,7 +23,7 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 	
 	ax = plt.subplot(2, 2, 1)
 
-	ymax = plot_distributions(Delta_Neff,z_NR)
+	ymax = plot_distributions_lin(Delta_Neff,z_NR)
 	# Plot settings
 
 	set_xy_lims(xmin=1e-3, xmax=1e4, ymin=0, ymax=50)
@@ -31,12 +31,22 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 
 	#ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")
 	ax.set_xlabel(r"$\xi_\chi \equiv q_\chi/T_\chi^0$")
-	ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\chi}{\mathrm{d} \log \xi_\chi} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
+	ax.set_ylabel(r"$\frac{\log \mathrm{d}\rho^\mathrm{NR}_\chi}{\mathrm{d} \log \xi_\chi} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 	#ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\nu}{\mathrm{d} \log q_\nu} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 
 	# add_cosmo_cases()
 
-	# ax = plt.subplot(2, 2, 2)
+	ax = plt.subplot(2, 2, 2)
+
+	ymax = plot_distributions_log(Delta_Neff,z_NR)
+	# Plot settings
+
+	set_xy_lims(xmin=1e-3, xmax=1e4, ymin=1e-5, ymax=1e3)
+	set_xy_scales(xscale='log', yscale='linear')
+
+	#ax.set_xlabel(r"$q_\nu \equiv p_\nu/T_{\nu, 0}$")
+	ax.set_xlabel(r"$\xi_\chi \equiv q_\chi/T_\chi^0$")
+	ax.set_ylabel(r"$\frac{\mathrm{d}\rho^\mathrm{NR}_\chi}{\mathrm{d} \log \xi_\chi} \, \mathrm{[eV\ cm}^{-3}\mathrm{]}$")
 
 	# plot_energy_evolution()
 	# set_xy_lims(xmin=1e0, xmax=1e4, ymin=0.95, ymax=1.30)

@@ -258,26 +258,13 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	# choose LN sigma grid for plotting continuous band
 	sigma_min = 0.04
 	sigma_max = 1.5
-	n_sigma = 5
+	n_sigma = 8
 	sigma_array = np.linspace(sigma_min, sigma_max, n_sigma)
 
 	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)
 	T0_dict, m_dict = LiMR_parameters(Delta_Neff, z_NR, sigma_array=sigma_array)
 	xi_array = np.geomspace(1e-4, 1e5, 40000)
 	ymax = 0.
-	# Plot canonical distributions first
-	for case in ['FD', 'BE', 'RD']:
-		d_rhoNR_dlogq = lambda xi, case=case: m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
-		plt.plot(
-			xi_array,
-			d_rhoNR_dlogq(xi_array),
-			c=cosmo_color(case),
-			lw=2.2,
-			label=case)
-		peak_value = np.max(d_rhoNR_dlogq(xi_array))
-		if peak_value > ymax:
-			ymax = peak_value
-		_ = integrate.simps(d_rhoNR_dlogq(xi_array), np.log(xi_array))
 	
 	# Now plot LN sigma band 
 	c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
@@ -297,6 +284,19 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 				 c0[1] * (1 - t) + c1[1] * t,
 				 c0[2] * (1 - t) + c1[2] * t)
 		plt.plot(xi_array, curve, c=color, alpha=1, lw=2)
+
+	# Now plot canonical distributions
+	for case in ['FD', 'BE', 'RD']:
+		d_rhoNR_dlogq = lambda xi, case=case: m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+		plt.plot(
+			xi_array,
+			d_rhoNR_dlogq(xi_array),
+			c=cosmo_color(case),
+			lw=2.2,
+			label=case)
+		peak_value = np.max(d_rhoNR_dlogq(xi_array))
+		if peak_value > ymax:
+			ymax = peak_value
 
 	# emphasize endpoints
 	if len(ln_curves) > 0:

@@ -364,11 +364,11 @@ def plot_distributions_log(Delta_Neff=0.3,z_NR=1e3):
 		d_logrhoNR_dlogq = lambda xi, case=case: np.log(m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3)
 		plt.plot(
 			xi_array,
-			d_rhoNR_dlogq(xi_array),
+			d_logrhoNR_dlogq(xi_array),
 			c=cosmo_color(case),
 			lw=2.2,
 			label=case)
-		peak_value = np.max(d_rhoNR_dlogq(xi_array))
+		peak_value = np.max(d_logrhoNR_dlogq(xi_array))
 		if peak_value > ymax:
 			ymax = peak_value
 	plt.legend(fontsize=14)

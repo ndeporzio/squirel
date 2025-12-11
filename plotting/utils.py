@@ -102,7 +102,7 @@ g_dict = {
 	'LN':2,
 }
 	
-def LiMR_parameters(Delta_Neff, z_NR, sigma_array=None, output_dir='../data/distribution_data/LN_Q_cache/'):
+def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, output_dir='../data/distribution_data/LN_Q_cache/'):
 	"""Return T0 and m dictionaries for the canonical distributions and (optionally) for a set of LN sigmas.
 
 	If `sigma_array` is provided, this function will use a cached table of LN Q-moments (Q0,Q1)
@@ -263,12 +263,11 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 
 	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)
 	T0_dict, m_dict = LiMR_parameters(Delta_Neff, z_NR, sigma_array=sigma_array)
-	gs = g_dict()
 	xi_array = np.geomspace(1e-4, 1e5, 40000)
 	ymax = 0.
 	# Plot canonical distributions first
 	for case in ['FD', 'BE', 'RD']:
-		d_rhoNR_dlogq = lambda xi, case=case: m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * gs[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
+		d_rhoNR_dlogq = lambda xi, case=case: m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3
 		plt.plot(
 			xi_array,
 			d_rhoNR_dlogq(xi_array),

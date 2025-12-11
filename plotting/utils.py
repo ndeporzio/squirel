@@ -258,7 +258,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 	# choose LN sigma grid for plotting continuous band
 	sigma_min = 0.04
 	sigma_max = 1.5
-	n_sigma = 80
+	n_sigma = 20
 	sigma_array = np.linspace(sigma_min, sigma_max, n_sigma)
 
 	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)

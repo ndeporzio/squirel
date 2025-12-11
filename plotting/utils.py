@@ -283,7 +283,18 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		color = (c0[0] * (1 - t) + c1[0] * t,
 				 c0[1] * (1 - t) + c1[1] * t,
 				 c0[2] * (1 - t) + c1[2] * t)
-		plt.plot(xi_array, curve, c=color, alpha=0.5, lw=2)
+		plt.plot(xi_array, curve, c=color, alpha=0.1, lw=2)
+
+	# emphasize endpoints
+	if len(ln_curves) > 0:
+		sharp_curve = ln_curves[0]
+		wide_curve = ln_curves[-1]
+		plt.plot(xi_array, sharp_curve, c=cosmo_color('LNsharp'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_min}$')
+		plt.plot(xi_array, wide_curve, c=cosmo_color('LNwide'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_max}$')
+		peak_value = np.max(np.vstack(ln_curves))
+		if peak_value > ymax:
+			ymax = peak_value
+	plt.legend(fontsize=14)
 
 	# Now plot canonical distributions
 	for case in ['FD', 'BE', 'RD']:
@@ -297,17 +308,6 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		peak_value = np.max(d_rhoNR_dlogq(xi_array))
 		if peak_value > ymax:
 			ymax = peak_value
-
-	# emphasize endpoints
-	if len(ln_curves) > 0:
-		sharp_curve = ln_curves[0]
-		wide_curve = ln_curves[-1]
-		plt.plot(xi_array, sharp_curve, c=cosmo_color('LNsharp'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_min}$')
-		plt.plot(xi_array, wide_curve, c=cosmo_color('LNwide'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_max}$')
-		peak_value = np.max(np.vstack(ln_curves))
-		if peak_value > ymax:
-			ymax = peak_value
-	plt.legend(fontsize=14)
 
 	ymax = ymax / 0.8
 	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))

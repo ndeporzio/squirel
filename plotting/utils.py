@@ -296,7 +296,6 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		peak_value = np.max(np.vstack(ln_curves))
 		if peak_value > ymax:
 			ymax = peak_value
-	plt.legend(fontsize=14)
 
 	# Now plot canonical distributions
 	for case in ['FD', 'BE', 'RD']:
@@ -310,6 +309,7 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		peak_value = np.max(d_rhoNR_dlogq(xi_array))
 		if peak_value > ymax:
 			ymax = peak_value
+	plt.legend(fontsize=14)
 
 	ymax = ymax / 0.8
 	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))

@@ -283,9 +283,9 @@ def plot_distributions(Delta_Neff=0.3,z_NR=1e3):
 		color = (c0[0] * (1 - t) + c1[0] * t,
 				 c0[1] * (1 - t) + c1[1] * t,
 				 c0[2] * (1 - t) + c1[2] * t)
-		plt.plot(xi_array, curve, c=color, alpha=0.2, lw=2)
-		if i%10 == 0:
-			plt.plot(xi_array, curve, c=color, alpha=0.8, lw=2)
+		plt.plot(xi_array, curve, c=color, alpha=0.1, lw=2)
+		if i%20 == 0:
+			plt.plot(xi_array, curve, c=color, alpha=0.6, lw=2)
 
 	# emphasize endpoints
 	if len(ln_curves) > 0:

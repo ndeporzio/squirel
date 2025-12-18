@@ -102,7 +102,7 @@ g_dict = {
 	'LN':2,
 }
 	
-def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, output_dir='../data/distribution_data/LN_Q_cache/'):
+def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, head_dir='../data/'):
 	"""Return T0 and m dictionaries for the canonical distributions and (optionally) for a set of LN sigmas.
 
 	If `sigma_array` is provided, this function will use a cached table of LN Q-moments (Q0,Q1)
@@ -118,8 +118,9 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, output_dir='../d
 		m_dict[case] = m_chi(T0_dict[case], z_NR, Q0_dict[case], Q1_dict[case])
 
 	# If sigma grid is requested, add entries for each sigma.
-	if sigma_array is not None and len(sigma_array) > 0:
+	if sigma_array != None and len(sigma_array) > 0:
 		# Ensure LN Q-cache exists for these sigmas
+		output_dir = head_dir+'distribution_data/LN_Q_cache'
 		q_cache = build_LN_Q_cache(sigma_array, output_dir=output_dir)
 		for sigma in sigma_array:
 			key = f'LN_{sigma:.3f}'
@@ -132,14 +133,75 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, output_dir='../d
 
 	return T0_dict, m_dict
 
-def_T0_dict, def_m_dict = LiMR_parameters(sigma_array=[0.04, 1.5])
-	
-def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_dict=def_m_dict, fixed='h', output_dir='../data/distribution_data/'):
+def_T0_dict, def_m_dict = LiMR_parameters(sigma_array=None)
+print(def_T0_dict, def_m_dict)
+
+
+def ncdm_flags(case,sigma=None):
+	ncdm_flags_dict = {
+	'FD':'0,0,0',
+	'BE':'1,0,0',
+	'RD':'3,0,0',
+	'LN':'2,0.5,0',#default sigma=0.5
+	}
+	if sigma != None:
+		ncdm_flags_dict['LN'] = '2,'+str(sigma)+',0'
+	return ncdm_flags_dict[case]
+
+def ncdm_strategy(case,sigma=None,N_mnu=1):
+	if case == 'RD' or (case == 'LN' and sigma != None and not 0.24 <= sigma <= 0.77):
+		LiMR_strat = '3' #use adaptive quadrature for RD or LN if sigma is close to extrema as it speeds up sampling here over default
+	else:
+		LiMR_strat = '0' #default
+	# vectorize output as string for N_mnu > 0 massive neutrinos
+	return LiMR_strat + ',' + ','.join(['0' for x in range(N_mnu)]) # Potentially non-standard strategy for LiMR, default for massive nus
+
+def ncdm_bins(case,N_mnu=1):
+	# this function returns the minimum number of bins required to get suitable sampling accuracy for the RD or LN distribution in our custom scheme, vectorized for 1 LiMR + N_mnu massive nus
+	# (Values are ignored for default sampler which uses adaptive scheme to minimize bins for each distribution)
+	if case == 'RD':
+		N_custom = 30
+	else:
+		N_custom = 20
+	return ','.join([N_custom for x in range(N_mnu+1)]) 
+
+def ncdm_scaler(case,N_mnu=1):
+	# this function returns the a-scaling factor for the custom quadrature scheme to ensure sufficient sampling of flat RD/LN distributions, vectorized for 1 LiMR + N_mnu massive nus
+	# (Values are ignored for default sampler)
+	if case == 'RD':
+		a_scaler = 5 # this is simply value that returned expected values for DNeff and rho at late times in tests
+	else:
+		a_scaler = 1 # this will be overwritten with value from interpolation table for LN distribution
+	return ','.join([str(a_scaler) for x in range(N_mnu+1)])
+
+def ncdm_qmax(case,N_mnu=1):
+	# this function returns the maximum q to sample for the custom quadrature scheme to ensure sufficient sampling of extended RD/LN distributions, vectorized for 1 LiMR + N_mnu massive nus
+	# (Values are ignored for default sampler)
+	if case == 'RD':
+		qmax = 1000
+	else:
+		qmax = 15 # this will be overwritten with value from interpolation table for LN distribution, and q_min != 0 chosen as well
+	return ','.join([str(qmax) for x in range(N_mnu+1)])
+
+def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
+	"""Run CLASS for a given case and save outputs.
+
+	This function writes a pickle with CLASS outputs. Files are written under `head_dir+'/fixed={fixed}/N_mnu={str(N_mnu)}_Mmnu={str(M_mnu)}/'`.
+	"""
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
 	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
 	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
+	if T0_dict == None or m_dict == None:
+		T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR,np.asarray(sigma),head_dir)
 	
+	nu_ur_array = [
+		3.044,
+		2.0308,
+		1.0176,
+		0.00441
+	] # Massless neutrino contribution to Neff for N_mnu = 0,1,2,3 massive nus respectively
+
     # Initialize CLASS
 	cosmo = Class()
 
@@ -159,43 +221,49 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 			   'fourier_verbose': 1,
 			   'lensing_verbose': 1,
 			   'output_verbose': 1,
+			   'N_ur':nu_ur_array[N_mnu],
+			   'omega_m':omega_m, 
+			   # Fix physical matter density, meaning a_eq will decrease with increasing z_NR from that of the equivalent DNeff DR cosmology down to LCDM
+			   # Although this does not isolate effect of radiation driving (see, e.g., 2503.04671), it more closely matches MCMC output and keeps rho_tot fixed since H0 is also fixed
 			})
+
+	output_dir = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'
+	# if directory does not exist at this path create it now
 	
 	print('[utils.py] Computing CLASS with', case, 'parameters.')
-    # Modify parameters according to case
-	if case == 'LCDM':
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+case+'_fixed='+fixed
-	elif case == 'DR':
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308+Delta_Neff,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed
+	# Modify parameters if N_mnu > 0 
+	if N_mnu>0:
+		m_ncdm_str = ','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
+		T_ncdm_str = ','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
+		cosmo.set({
+			'N_ncdm':N_mnu,
+			'm_ncdm':m_ncdm_str,
+			'T_ncdm':T_ncdm_str,
+		})
+	
+	# Now go case by case for non-LCDM cosmologies
+	if case == 'DR':
+		cosmo.set({
+			'N_ur':nu_ur_array[N_mnu]+Delta_Neff,
+		})
+		root = output_dir+case+'_DNeff='+str(Delta_Neff)
 	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
-		cosmo.set({'N_ncdm':2,
-                   'm_ncdm':str(m_dict[case])+', 0.06',
-                   'T_ncdm':str(T0_dict[case])+', 0.71611',
-                   'omega_m':omega_m,
-                   'N_ur':2.0308,
-                   })
-		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed
+		m_ncdm_str = str(m_dict[case])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
+		T_ncdm_str = str(T0_dict[case])+','+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
+		cosmo.set({
+			'N_ncdm':N_mnu+1,
+			'm_ncdm':m_ncdm_str,
+			'T_ncdm':T_ncdm_str,
+			'deg_ncdm':float(g_dict[case])/2,
+			'ncdm_psd_parameters':ncdm_flags(case,sigma),
+			'ncdm_quadrature_strategy':ncdm_strategy(case,sigma,N_mnu),
+			'ncdm_N_momentum_bins':ncdm_bins(N_mnu),
+			'ncdm_a':ncdm_scaler(N_mnu),
+			'ncdm_maximum_q':ncdm_qmax(N_mnu),
+		})	
+		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
 	else:
-		print('[utils.py] (ERROR) Case not recognised, using LCDM parameters.')
-		cosmo.set({'N_ncdm':1,
-                   'm_ncdm':0.06,
-                   'T_ncdm':0.71611,
-                   'N_ur':2.0308,
-                   'omega_m':omega_m,
-                   })
-		root = output_dir+'LCDM_fixed='+fixed
+		root = output_dir+case
 	if fixed == 'theta_s100':
 		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
 		cosmo.set({'100*theta_s':theta_s100})
@@ -233,23 +301,27 @@ def run_CLASS_and_save(case, Delta_Neff=0.3, z_NR=1e3, T0_dict=def_T0_dict, m_di
 
 	return output_data
 	
-def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distribution_data/'):
-	for case in ['LCDM', 'DR', 'FD']:
-		filename = ''
-		if case == 'LCDM':
-			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
-		elif case == 'DR':
-			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
-		else:
-			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
-		if os.path.exists(filename):
-			with open(filename, 'rb') as f:
-				output_data = pickle.load(f)
-			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
-		else:
-			T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR, output_dir)
-			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
-		globals()[f'cosmo_{case}'] = output_data
+run_CLASS_and_save()
+
+
+
+# def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distribution_data/'):
+# 	for case in ['LCDM', 'DR', 'FD']:
+# 		filename = ''
+# 		if case == 'LCDM':
+# 			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
+# 		elif case == 'DR':
+# 			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
+# 		else:
+# 			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
+# 		if os.path.exists(filename):
+# 			with open(filename, 'rb') as f:
+# 				output_data = pickle.load(f)
+# 			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
+# 		else:
+# 			T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR, output_dir)
+# 			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
+# 		globals()[f'cosmo_{case}'] = output_data
 
 #
 # Plotting functions

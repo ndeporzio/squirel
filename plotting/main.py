@@ -7,21 +7,35 @@ rcParams.update({
 	"font.family": "serif",
 })
 
+def cosmo_densities(plot_dir='plots/', figname='cosmo_densities.pdf'):
+	fig = plt.figure(figsize=(8, 5))
+	ax = plt.subplot(1, 1, 1)
+	plot_cosmo_densities()
 
-def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
-	usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
-	if usedef == 'n':
-		Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
-		z_NR = float(input('[main.py] Desired z_NR: '))
-	else:
-		Delta_Neff = 0.3
-		z_NR = 1000
+	plt.xlabel(r'$\mathrm{Scale\,\,Factor}\,\,a/a_0 = (1 + z)^{-1}$', fontsize=16)
+	plt.ylabel(r'$\mathrm{Energy\,\,Density}\,\,\Omega_{i}(a)$', fontsize=16)
+	plt.xlim(1e-6, 1e0)
+	plt.ylim(1e-4, 2e0)
 
-	print('[main.py] Using LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
+	plt.text(1.5e-6, 5.8e-3, r'$\mathrm{Cold\,\,Dark\,\,Matter}$', rotation=40, fontsize=12)
+	plt.text(2.8e-2, 1.5e-4, r'$\mathrm{Dark\,\,Energy}$', rotation=68, fontsize=12)
+	plt.text(1.8e-6, 6.5e-1, r'$\mathrm{Photons}$', rotation=0, fontsize=12)
+	plt.text(1.5e-6, 2.8e-1, r'$\mathbf{Neutrinos}$', rotation=0, fontsize=12)
+	# plt.text(1.7e-2, 1.3e-2, r'$\Sigma m_\nu = 0.06\,\mathrm{eV}$', rotation=-3, fontsize=12)
+
+	plt.text(2.1e-4, 1.6e-4, r'$\mathrm{Matter-radiation\,\,eq.,\,\,}z_{\mathrm{eq}}$', rotation=90, fontsize=12, color='gray')
+	plt.text(6.9e-4, 1.6e-4, r'$\mathrm{Photon\,\,decoupling,\,\,}z_{\mathrm{dec}}$', rotation=90, fontsize=12, color='gray')
+	plt.axvline((1 + 3402)**(-1), c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
+	plt.axvline((1 + 1089)**(-1), c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
+
+	print('[main.py] Saving:', plot_dir + figname)
+	plt.savefig(plot_dir + figname)
+
+def distribs_comparison(plot_dir='plots/', figname='distribs_comparison.pdf'):
 
 	fig = plt.figure(figsize=(14, 12))
 	
-	ax = plt.subplot(2, 2, 1)
+	ax = plt.subplot(1, 1, 1)
 
 	ymax = plot_distributions_lin(Delta_Neff,z_NR)
 	# Plot settings
@@ -94,8 +108,39 @@ def cosmo_comparison(plot_dir='plots/', figname='cosmo_comparison.pdf'):
 if __name__ == '__main__':
 	print('[main.py] Starting main.py')
 
-	# fill_LiMR_parameters(Delta_Neff, z_NR)
-	cosmo_comparison()
+	density = input('[main.py] Densities (y/n): ')
+	dists = input('[main.py] Distributions (y/n): ')
+	evols = input('[main.py] Evolutions (y/n): ')
+	cmb = input('[main.py] CMB Sensitivity (y/n): ')
+
+	if density == 'y':
+		cosmo_densities()
+	# if dists == 'y':
+	# 	distribs_comparison()
+	# usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
+	# if usedef == 'n':
+	# 	Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
+	# 	z_NR = float(input('[main.py] Desired z_NR: '))
+	# else:
+	# 	Delta_Neff = 0.3
+	# 	z_NR = 1000
+
+	# print('[main.py] Using LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
+	# distribs_comparison()
+
+
+	# if dists == 'y':
+	# 	distribs_comparison()
+	# usedef = input('[main.py] Use default LiMR parameters? (y/n): ')
+	# if usedef == 'n':
+	# 	Delta_Neff = float(input('[main.py] Desired Delta_Neff: '))
+	# 	z_NR = float(input('[main.py] Desired z_NR: '))
+	# else:
+	# 	Delta_Neff = 0.3
+	# 	z_NR = 1000
+
+	# print('[main.py] Using LiMR parameters: Delta_Neff =', Delta_Neff, ', z_NR =', z_NR)
+	# distribs_comparison()
 	# cosmo_distributions()
 
 	# density = input('[main.py] Densities (y/n): ')

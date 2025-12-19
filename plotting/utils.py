@@ -8,8 +8,9 @@ from classy import Class
 # modules for data I/O
 import pickle
 import os 
-T0CMB = 2.7255
+T0CMB = 2.7255 # in Kelvin
 nu_factor = (4/11)**(1/3)  # T_nu0 (instantaneous decoupling) / T_CMB0
+T0nu = T0CMB*0.71611 # with precise decoupling, in Kelvin
 K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
 hbar = constants.physical_constants['reduced Planck constant in eV s'][0]
 c = constants.speed_of_light
@@ -79,8 +80,11 @@ def T0chi(Q1,Delta_Neff,g):
 
 # mass in eV
 def m_chi(T0chi,z_NR,Q0,Q1):
-	K_to_eV = constants.physical_constants['Boltzmann constant in eV/K'][0]
 	return T0chi*T0CMB*K_to_eV*(z_NR+1)*Q1/Q0
+
+# LiMR physical matter density 
+def omega_chi(Delta_Neff,z_NR):
+	return Delta_Neff*(1+z_NR)*(7*np.pi**4/120)**(-1)*3/2*zeta(3)*T0nu*K_to_eV/93.14 
 
 # Precomputed moments for canonical distributions
 Q0_dict = {
@@ -134,7 +138,7 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, head_dir='../dat
 	return T0_dict, m_dict
 
 def_T0_dict, def_m_dict = LiMR_parameters(sigma_array=None)
-print(def_T0_dict, def_m_dict)
+# print(def_T0_dict, def_m_dict)
 
 
 def ncdm_flags(case,sigma=None):
@@ -163,7 +167,7 @@ def ncdm_bins(case,N_mnu=1):
 		N_custom = 30
 	else:
 		N_custom = 20
-	return ','.join([N_custom for x in range(N_mnu+1)]) 
+	return ','.join([str(N_custom) for x in range(N_mnu+1)]) 
 
 def ncdm_scaler(case,N_mnu=1):
 	# this function returns the a-scaling factor for the custom quadrature scheme to ensure sufficient sampling of flat RD/LN distributions, vectorized for 1 LiMR + N_mnu massive nus
@@ -212,14 +216,14 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 			   'lensing': 'yes',
 			   'write_background':'yes',            # Write background parameter table
 			   'background_verbose': 3,
-			   'thermodynamics_verbose': 1,
+			   #'thermodynamics_verbose': 1,
 			   'perturbations_verbose': 1,
 			   'input_verbose': 1,
-			   'transfer_verbose': 1,
-			   'primordial_verbose': 1,
-			   'harmonic_verbose': 1,
-			   'fourier_verbose': 1,
-			   'lensing_verbose': 1,
+			   #'transfer_verbose': 1,
+			   #'primordial_verbose': 1,
+			   #'harmonic_verbose': 1,
+			   #'fourier_verbose': 1,
+			   #'lensing_verbose': 1,
 			   'output_verbose': 1,
 			   'N_ur':nu_ur_array[N_mnu],
 			   'omega_m':omega_m, 
@@ -229,7 +233,10 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 
 	output_dir = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'
 	# if directory does not exist at this path create it now
-	
+	if not os.path.exists(output_dir):
+		os.makedirs(output_dir)
+		print('[utils.py] Created directory:', output_dir)
+
 	print('[utils.py] Computing CLASS with', case, 'parameters.')
 	# Modify parameters if N_mnu > 0 
 	if N_mnu>0:
@@ -247,7 +254,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 			'N_ur':nu_ur_array[N_mnu]+Delta_Neff,
 		})
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)
-	elif case == 'FD' or case == 'BE' or case == 'RD' or case == 'LN':
+	elif case in ['FD', 'BE', 'RD', 'LN']:
 		m_ncdm_str = str(m_dict[case])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
 		T_ncdm_str = str(T0_dict[case])+','+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
 		cosmo.set({
@@ -262,6 +269,8 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 			'ncdm_maximum_q':ncdm_qmax(N_mnu),
 		})	
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
+		if case == 'LN':
+			root = root + '_sigma=' + str(sigma)
 	else:
 		root = output_dir+case
 	if fixed == 'theta_s100':
@@ -279,6 +288,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	# save output to file
 	filename = root + '_output.pkl'
 	bg = cosmo.get_background()
+	print(bg)
 	unlensed_cls = cosmo.raw_cl()
 	lensed_cls = cosmo.lensed_cl()
 	kvec = np.logspace(-4,1,2500)
@@ -300,29 +310,27 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	cosmo.empty()
 
 	return output_data
-	
-run_CLASS_and_save()
 
-
-
-# def fill_cosmos(Delta_Neff=0.3, z_NR=1e3, fixed='h', output_dir='../data/distribution_data/'):
-# 	for case in ['LCDM', 'DR', 'FD']:
-# 		filename = ''
-# 		if case == 'LCDM':
-# 			filename = output_dir+case+'_fixed='+fixed+'_output.pkl'
-# 		elif case == 'DR':
-# 			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_fixed='+fixed+'_output.pkl'
-# 		else:
-# 			filename = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_fixed='+fixed+'_output.pkl'
-# 		if os.path.exists(filename):
-# 			with open(filename, 'rb') as f:
-# 				output_data = pickle.load(f)
-# 			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
-# 		else:
-# 			T0_dict, m_dict = fill_LiMR_parameters(Delta_Neff, z_NR, output_dir)
-# 			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict, m_dict, fixed, output_dir)
-# 		globals()[f'cosmo_{case}'] = output_data
-
+def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
+	""" Pickle output from CLASS for a set of cosmological cases.
+	Then create global variables for each case with the output data.
+	"""
+	output_dir = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'
+	for case in cases:
+		root = output_dir+case
+		if case == 'DR':
+			root = output_dir+case+'_DNeff='+str(Delta_Neff)
+		elif case in ['FD', 'BE', 'RD']:
+			root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
+		filename = root + '_output.pkl'
+		if os.path.exists(filename):
+			with open(filename, 'rb') as f:
+				output_data = pickle.load(f)
+			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
+		else:
+			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma_array, T0_dict, m_dict, N_mnu, M_mnu, fixed, head_dir)
+		globals()[f'cosmo_{root}'] = output_data
+			
 #
 # Plotting functions
 #
@@ -388,154 +396,118 @@ def plot_distributions_lin(Delta_Neff=0.3,z_NR=1e3):
 	
 	return ymax_rounded
 
-def plot_distributions_log(Delta_Neff=0.3,z_NR=1e3):
-	# choose LN sigma grid for plotting continuous band
-	sigma_min = 0.04
-	sigma_max = 1.5
-	n_sigma = 200
-	sigma_array = np.linspace(sigma_min, sigma_max, n_sigma)
+def plot_cosmo_densities(Delta_Neffs=[0.3], z_NRs =[1e3], N_mnu = 1, M_mnu = 0.06, head_dir='../data/'):
+	"""
+	This function plots the bg energy density evolution for LCDM (with N_mnu massive neutrinos) and for possibly multiple FD LiMR cosmologies.
+	It assumes H0 is fixed to 67.81 km/s/Mpc
+	"""
+	# fill out arrays for background values for plotting, using fill_cosmos
+	for i, Delta_Neff in enumerate(Delta_Neffs):
+		fill_cosmos(cases=['LCDM','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, head_dir=head_dir)
 
-	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)
-	T0_dict, m_dict = LiMR_parameters(Delta_Neff, z_NR, sigma_array=sigma_array)
-	xi_array = np.geomspace(1e-4, 1e5, 40000)
-	ymax = 0.
+	root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
+	z_array = globals()[f'cosmo_{root}']['background']['z']
+	a_array = 1/(1+z_array)
+	rho_g = globals()[f'cosmo_{root}']['background']['(.)rho_g']
+	rho_cdm_LCDM = globals()[f'cosmo_{root}']['background']['(.)rho_cdm']
+	rho_nu = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]']+globals()[f'cosmo_{root}']['background']['(.)rho_ur']
+	rho_lambda = globals()[f'cosmo_{root}']['background']['(.)rho_lambda']
+	rho_crit = globals()[f'cosmo_{root}']['background']['(.)rho_crit']
+
+	for rhos in [rho_g, rho_cdm_LCDM, rho_nu, rho_lambda]:
+		Omega_i = rhos/rho_crit
+		plt.loglog(
+			a_array,
+			Omega_i,
+			c='k',
+			lw=1.0,
+			zorder=1,
+			# label=rhos
+			)
+		
+	for i, Delta_Neff in enumerate(Delta_Neffs):
+		root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
+		rho_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]]']
+		rho_cdm_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_cdm']
+		for rhos in [rho_LiMR, rho_cdm_LiMR]:
+			Omega_i = rhos/rho_crit
+			plt.loglog(
+				a_array,
+				Omega_i,
+				c=cosmo_color('FD'),
+				lw=2.0,
+				# ls='--',
+				# zorder=0,
+				# label=rhos
+				)
+	# plt.legend(fontsize=14) 
+
+plot_cosmo_densities()
+
+
+# def plot_distributions_log(Delta_Neff=0.3,z_NR=1e3):
+# 	# choose LN sigma grid for plotting continuous band
+# 	sigma_min = 0.04
+# 	sigma_max = 1.5
+# 	n_sigma = 200
+# 	sigma_array = np.linspace(sigma_min, sigma_max, n_sigma)
+
+# 	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)
+# 	T0_dict, m_dict = LiMR_parameters(Delta_Neff, z_NR, sigma_array=sigma_array)
+# 	xi_array = np.geomspace(1e-4, 1e5, 40000)
+# 	ymax = 0.
 	
-	# Now plot LN sigma band 
-	c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
-	c1 = mpl.colors.to_rgb(cosmo_color('LNwide'))
-	ln_curves = []
-	for i, sigma in enumerate(sigma_array):
-		key = f'LN_{sigma:.3f}'
-		if key not in m_dict or key not in T0_dict:
-			# skip missing entries (shouldn't happen if LiMR_parameters ran correctly)
-			continue
-		m_sigma = m_dict[key]
-		T0_sigma = T0_dict[key]
-		curve = np.log(m_sigma*(T0_sigma*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict['LN'] / (2 * np.pi**2) * f_LN(xi_array,sigma) * xi_array**3)
-		ln_curves.append(curve)
-		t = float(i) / (len(sigma_array) - 1)
-		color = (c0[0] * (1 - t) + c1[0] * t,
-				 c0[1] * (1 - t) + c1[1] * t,
-				 c0[2] * (1 - t) + c1[2] * t)
-		plt.plot(xi_array, curve, c=color, alpha=0.1, lw=2)
-		if i%20 == 0:
-			plt.plot(xi_array, curve, c=color, alpha=0.6, lw=2)
+# 	# Now plot LN sigma band 
+# 	c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
+# 	c1 = mpl.colors.to_rgb(cosmo_color('LNwide'))
+# 	ln_curves = []
+# 	for i, sigma in enumerate(sigma_array):
+# 		key = f'LN_{sigma:.3f}'
+# 		if key not in m_dict or key not in T0_dict:
+# 			# skip missing entries (shouldn't happen if LiMR_parameters ran correctly)
+# 			continue
+# 		m_sigma = m_dict[key]
+# 		T0_sigma = T0_dict[key]
+# 		curve = np.log(m_sigma*(T0_sigma*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict['LN'] / (2 * np.pi**2) * f_LN(xi_array,sigma) * xi_array**3)
+# 		ln_curves.append(curve)
+# 		t = float(i) / (len(sigma_array) - 1)
+# 		color = (c0[0] * (1 - t) + c1[0] * t,
+# 				 c0[1] * (1 - t) + c1[1] * t,
+# 				 c0[2] * (1 - t) + c1[2] * t)
+# 		plt.plot(xi_array, curve, c=color, alpha=0.1, lw=2)
+# 		if i%20 == 0:
+# 			plt.plot(xi_array, curve, c=color, alpha=0.6, lw=2)
 
-	# emphasize endpoints
-	if len(ln_curves) > 0:
-		sharp_curve = ln_curves[0]
-		wide_curve = ln_curves[-1]
-		plt.plot(xi_array, sharp_curve, c=cosmo_color('LNsharp'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_min}$')
-		plt.plot(xi_array, wide_curve, c=cosmo_color('LNwide'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_max}$')
-		peak_value = np.max(np.vstack(ln_curves))
-		if peak_value > ymax:
-			ymax = peak_value
+# 	# emphasize endpoints
+# 	if len(ln_curves) > 0:
+# 		sharp_curve = ln_curves[0]
+# 		wide_curve = ln_curves[-1]
+# 		plt.plot(xi_array, sharp_curve, c=cosmo_color('LNsharp'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_min}$')
+# 		plt.plot(xi_array, wide_curve, c=cosmo_color('LNwide'), lw=2.6, alpha=0.9, label=f'LN $\\sigma={sigma_max}$')
+# 		peak_value = np.max(np.vstack(ln_curves))
+# 		if peak_value > ymax:
+# 			ymax = peak_value
 
-	# Now plot canonical distributions
-	for case in ['FD', 'BE', 'RD']:
-		d_logrhoNR_dlogq = lambda xi, case=case: np.log(m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3)
-		plt.plot(
-			xi_array,
-			d_logrhoNR_dlogq(xi_array),
-			c=cosmo_color(case),
-			lw=2.2,
-			label=case)
-		peak_value = np.max(d_logrhoNR_dlogq(xi_array))
-		if peak_value > ymax:
-			ymax = peak_value
-	plt.legend(fontsize=14)
+# 	# Now plot canonical distributions
+# 	for case in ['FD', 'BE', 'RD']:
+# 		d_logrhoNR_dlogq = lambda xi, case=case: np.log(m_dict[case]*(T0_dict[case]*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict[case] / (2 * np.pi**2) * eval(f'f_{case}(xi)') * xi**3)
+# 		plt.plot(
+# 			xi_array,
+# 			d_logrhoNR_dlogq(xi_array),
+# 			c=cosmo_color(case),
+# 			lw=2.2,
+# 			label=case)
+# 		peak_value = np.max(d_logrhoNR_dlogq(xi_array))
+# 		if peak_value > ymax:
+# 			ymax = peak_value
+# 	plt.legend(fontsize=14)
 
-	ymax = ymax / 0.8
-	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))
+# 	ymax = ymax / 0.8
+# 	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))
 	
-	return ymax_rounded
+# 	return ymax_rounded
 
-
-def add_cosmo_cases():
-	xoff, yoff, offset = 0.15, -0.0, 0.03
-	plt.text(0.2 - xoff, 0.90 - yoff,r"\boldmath{$\Lambda$}\textbf{CDM}",transform=plt.gca().transAxes,
-		fontsize=14,
-		color=cosmo_color('LCDM'),
-		rotation=0)
-	plt.text(0.35, 0.09, r"\boldmath{$\Lambda$}\textbf{CDM}",
-		transform=plt.gca().transAxes,
-		fontsize=10,
-		color=cosmo_color('LCDM'),
-		rotation=42)
-	plt.text(0.38 - xoff, 0.89 - yoff,r"$\sum m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^\nu = 3.044$",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color='k',
-		rotation=0)
-
-	plt.text(0.2 - xoff, 0.82 + offset - yoff,r"\textbf{L}\boldmath{$\nu$}\textbf{-DR}",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color=cosmo_color('LEDR'),
-		rotation=0)
-	plt.text(0.11, 0.09,r"\textbf{L}\boldmath{$\nu$}\textbf{-DR}",
-			transform=plt.gca().transAxes,
-		fontsize=10,
-		color=cosmo_color('LEDR'),
-		rotation=62)
-	plt.text(0.38 - xoff, 0.81 + offset - yoff,r"$\sum m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^\nu = 0.5$, $N_{\rm eff}^{\rm DR} = 2.544$",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color='k',
-		rotation=0)
-
-	plt.text(0.2 - xoff, 0.74 + 2 * offset - yoff, r"\textbf{H}\boldmath{$\nu$}",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color=cosmo_color('HE'),
-		rotation=0)
-	plt.text(0.77, 0.32, r"\textbf{H}\boldmath{$\nu$}",
-		transform=plt.gca().transAxes,
-		fontsize=12,
-		color=cosmo_color('HE'),
-		rotation=80)
-	plt.text(0.38 - xoff, 0.73 + 2 * offset - yoff,r"$\sum m_\nu = 1.20\,\mathrm{eV}$, $N_{\rm eff}^\nu = 3.044$",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color='k',
-		rotation=0)
-
-	plt.text(0.2 - xoff, 0.66 + 3 * offset - yoff,r"\textbf{H}\boldmath{$\nu$}\textbf{-DR}",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color=cosmo_color('HEDR'),
-		rotation=0)
-	plt.text(0.61, 0.09,r"\textbf{H}\boldmath{$\nu$}\textbf{-DR}",
-		transform=plt.gca().transAxes,
-		fontsize=10,
-		color=cosmo_color('HEDR'),
-		rotation=63)
-	plt.text(0.38 - xoff, 0.65 + 3 * offset - yoff,r"$\sum m_\nu = 1.20\,\mathrm{eV}$, $N_{\rm eff}^\nu = 1.5$, $N_{\rm eff}^{\rm DR} = 1.544$",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color='k',
-		rotation=0)
-
-	plt.text(0.2 - xoff, 0.58 + 4 * offset - yoff,r"\textbf{LT+Mid}",transform=plt.gca().transAxes,
-		fontsize=14,
-		color=cosmo_color('LTM'),
-		rotation=0)
-	plt.text(0.455,0.24,r"\textbf{LT+Mid}",transform=plt.gca().transAxes,
-		fontsize=10,
-		color=cosmo_color('LTM'),
-		rotation=83)
-	plt.text(0.38 - xoff, 0.57 + 4 * offset - yoff,r"$\sum  m_\nu = 0.12\,\mathrm{eV}$, $N_{\rm eff}^{\nu} = 3.044$",
-		transform=plt.gca().transAxes,
-		fontsize=14,
-		color='k',
-		rotation=0)
-
-	plt.text(0.2 - xoff, 0.55 + 2 * offset - yoff,r"$\Omega_{\nu,0} / \Omega_{\mathrm{m},0} = 0.009$, $N_{\rm eff} = 3.044$",
-		transform=plt.gca().transAxes,
-		fontsize=16,
-		color='k',
-		rotation=0)
-	
+# Plotting visual settings
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 	plt.xlim(xmin, xmax)
 	plt.ylim(ymin, ymax)
@@ -547,10 +519,6 @@ def add_xy_labels(xlabel=r'$m_\mathrm{lightest}\,\mathrm{[meV]}$', ylabel=r'$n_\
 def set_xy_scales(xscale='linear', yscale='log'):
 	plt.xscale(xscale)
 	plt.yscale(yscale)
-
-HIGHP_LABEL = r'$\mathrm{High-}p_\nu$'
-LOWT_LABEL = r'$\mathrm{Low-}T_\nu\mathrm{+DR}$'
-LCDM_LABEL = r'$\Lambda\mathrm{CDM}$'
 
 def cosmo_color(case='LCDM'):
 	colors_dict = {

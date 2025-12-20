@@ -17,16 +17,9 @@ def cosmo_densities(plot_dir='plots/', figname='cosmo_densities.pdf'):
 	plt.xlim(1e-6, 1e0)
 	plt.ylim(1e-4, 2e0)
 
-	plt.text(1.5e-6, 5.8e-3, r'$\mathrm{Cold\,\,Dark\,\,Matter}$', rotation=40, fontsize=12)
-	plt.text(2.8e-2, 1.5e-4, r'$\mathrm{Dark\,\,Energy}$', rotation=68, fontsize=12)
-	plt.text(1.8e-6, 6.5e-1, r'$\mathrm{Photons}$', rotation=0, fontsize=12)
-	plt.text(1.5e-6, 2.8e-1, r'$\mathbf{Neutrinos}$', rotation=0, fontsize=12)
+	# plt.text(1.5e-6, 5.8e-3, r'$\mathrm{Cold\,\,Dark\,\,Matter}$', rotation=40, fontsize=12)
+	# plt.text(2.8e-2, 1.5e-4, r'$\mathrm{Dark\,\,Energy}$', rotation=68, fontsize=12)
 	# plt.text(1.7e-2, 1.3e-2, r'$\Sigma m_\nu = 0.06\,\mathrm{eV}$', rotation=-3, fontsize=12)
-
-	plt.text(2.1e-4, 1.6e-4, r'$\mathrm{Matter-radiation\,\,eq.,\,\,}z_{\mathrm{eq}}$', rotation=90, fontsize=12, color='gray')
-	plt.text(6.9e-4, 1.6e-4, r'$\mathrm{Photon\,\,decoupling,\,\,}z_{\mathrm{dec}}$', rotation=90, fontsize=12, color='gray')
-	plt.axvline((1 + 3402)**(-1), c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
-	plt.axvline((1 + 1089)**(-1), c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
 
 	print('[main.py] Saving:', plot_dir + figname)
 	plt.savefig(plot_dir + figname)

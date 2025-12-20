@@ -159,7 +159,10 @@ def ncdm_strategy(case,sigma=None,N_mnu=1):
 	else:
 		LiMR_strat = '0' #default
 	# vectorize output as string for N_mnu > 0 massive neutrinos
-	return LiMR_strat + ',' + ','.join(['0' for x in range(N_mnu)]) # Potentially non-standard strategy for LiMR, default for massive nus
+	if N_mnu > 0:
+		return LiMR_strat + ',' + ','.join(['0' for x in range(N_mnu)]) # Potentially non-standard strategy for LiMR, default for massive nus
+	else:
+		return LiMR_strat
 
 def ncdm_bins(case,N_mnu=1):
 	# this function returns the minimum number of bins required to get suitable sampling accuracy for the RD or LN distribution in our custom scheme, vectorized for 1 LiMR + N_mnu massive nus
@@ -242,13 +245,18 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	print('[utils.py] Computing CLASS with', case, 'parameters.')
 	# Modify parameters if N_mnu > 0 
 	if N_mnu>0:
-		m_ncdm_str = ','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
-		T_ncdm_str = ','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
+		m_ncdm_str = ','+','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
+		T_ncdm_str = ','+','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
 		cosmo.set({
 			'N_ncdm':N_mnu,
 			'm_ncdm':m_ncdm_str,
 			'T_ncdm':T_ncdm_str,
 		})
+		deg_ncdm_str = ','+','.join(['1' for x in range(N_mnu)]) # g = 2 for massive neutrinos
+	else:
+		m_ncdm_str = ''
+		T_ncdm_str = ''
+		deg_ncdm_str = ''
 	
 	# Now go case by case for non-LCDM cosmologies
 	if case == 'DR':
@@ -258,9 +266,9 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)
 	elif case in ['FD', 'BE', 'RD', 'LN']:
 		# Need to fix m_dict for LN case
-		m_ncdm_str = str(m_dict[case])+','+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
-		T_ncdm_str = str(T0_dict[case])+','+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
-		deg_ncdm_str = str(float(g_dict[case]/2))+ ',' + ','.join(['1' for x in range(N_mnu)]) # Potentially non-standard deg_ncdm for LiMR, default for massive nus
+		m_ncdm_str = str(m_dict[case])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
+		T_ncdm_str = str(T0_dict[case])+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
+		deg_ncdm_str = str(float(g_dict[case]/2))+ deg_ncdm_str # Potentially non-standard deg_ncdm for LiMR, default for massive nus
 		cosmo.set({
 			'N_ncdm':N_mnu+1,
 			'm_ncdm':m_ncdm_str,
@@ -298,7 +306,6 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	# save output to file
 	filename = root + '_output.pkl'
 	bg = cosmo.get_background()
-	print(bg)
 	unlensed_cls = cosmo.raw_cl()
 	lensed_cls = cosmo.lensed_cl()
 	kvec = np.logspace(-4,1,2500)
@@ -315,7 +322,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	with open(filename, 'wb') as f:
 		pickle.dump(output_data, f)
 	print('[utils.py] CLASS output saved to:', filename)
-	print(cosmo.Neff()-3.044)
+
 	cosmo.struct_cleanup()
 	cosmo.empty()
 
@@ -406,26 +413,45 @@ def plot_distributions_lin(Delta_Neff=0.3,z_NR=1e3):
 	
 	return ymax_rounded
 
-def plot_cosmo_densities(Delta_Neffs=[0.3], z_NRs =[1e3], N_mnu = 1, M_mnu = 0.06, head_dir='../data/'):
+def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, head_dir='../data/'):
 	"""
 	This function plots the bg energy density evolution for LCDM (with N_mnu massive neutrinos) and for possibly multiple FD LiMR cosmologies.
 	It assumes H0 is fixed to 67.81 km/s/Mpc
 	"""
+	cs = [
+		'#dc267f',
+		'#785ef0',
+		'#648fff',
+		'#ffb000',
+		'#fe6100',
+	]
+
 	# fill out arrays for background values for plotting, using fill_cosmos
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		fill_cosmos(cases=['LCDM','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, head_dir=head_dir)
 
-	print('[utils.py] Plotting background density evolution for', N_mnu, 'massive neutrinos of', M_mnu/N_mnu, 'eV.')
+	print('[utils.py] Plotting background density evolution for', N_mnu, 'massive neutrinos of', M_mnu, 'total eV.')
 	root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
 	z_array = globals()[f'cosmo_{root}']['background']['z']
 	a_array = 1/(1+z_array)
 	rho_g = globals()[f'cosmo_{root}']['background']['(.)rho_g']
 	rho_cdm_LCDM = globals()[f'cosmo_{root}']['background']['(.)rho_cdm']
-	rho_nu = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]']+globals()[f'cosmo_{root}']['background']['(.)rho_ur']
+	rho_ur_LCDM = globals()[f'cosmo_{root}']['background']['(.)rho_ur'] # first include ur contribution to rho_nu
+	rho_mnu_tot = 0
+	p_mnu_tot = 0
+	for ncdm_index in range(N_mnu):
+		# then add massive neutrino contribution (corresponding to keys (.)rho_ncdm[0] - (.)rho_ncdm[N_mnu] for LCDM)
+		rho_mnu_tot += globals()[f'cosmo_{root}']['background'][f'(.)rho_ncdm[{ncdm_index}]']
+		p_mnu_tot += globals()[f'cosmo_{root}']['background'][f'(.)p_ncdm[{ncdm_index}]']
+	
+	rho_b = globals()[f'cosmo_{root}']['background']['(.)rho_b']
+	rho_nu_tot = rho_ur_LCDM + rho_mnu_tot
+	rho_m_LCDM = rho_cdm_LCDM + rho_b + rho_mnu_tot - 3*p_mnu_tot # need to subtract off relativistic contribution from massive nu's and ur species
+
 	rho_lambda = globals()[f'cosmo_{root}']['background']['(.)rho_lambda']
 	rho_crit = globals()[f'cosmo_{root}']['background']['(.)rho_crit']
 
-	for rhos in [rho_g, rho_cdm_LCDM, rho_nu, rho_lambda]:
+	for rhos in [rho_g, rho_m_LCDM, rho_nu_tot, rho_lambda]:
 		Omega_i = rhos/rho_crit
 		plt.loglog(
 			a_array,
@@ -435,26 +461,51 @@ def plot_cosmo_densities(Delta_Neffs=[0.3], z_NRs =[1e3], N_mnu = 1, M_mnu = 0.0
 			zorder=1,
 			# label=rhos
 			)
-	
+		
+	plt.text(1.8e-6, 6.5e-1, r'$\mathrm{Photons}$', rotation=0, fontsize=12)
+	plt.text(1.5e-6, 2.8e-1, r'$\mathrm{Neutrinos}$', rotation=0, fontsize=12)
+	if N_mnu > 0:
+		plt.text(1.5e-6, 2e-1, r'$(\Sigma m_\nu = '+str(M_mnu)+'\,\mathrm{eV})$', rotation=0, fontsize=10)
+	plt.text(1.3e-2, 1.1, r'$\mathrm{Total\,\,Matter}$', rotation=0, fontsize=12)
+	plt.text(2.8e-2, 1.5e-4, r'$\mathrm{Dark\,\,Energy}$', rotation=68, fontsize=12)
+
+	a_eq = globals()[f'cosmo_{root}']['derived']['a_eq']
+	z_rec = globals()[f'cosmo_{root}']['derived']['z_rec']
+	a_rec = 1/(1+z_rec)
+
+	plt.axvline(a_eq, c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
+	plt.axvline(a_rec, c='gray', ls='-', lw=1.0, alpha=0.7, zorder=0)
+
+	plt.text(0.65*a_eq, 1.6e-3, r'$z_{\mathrm{eq}}$', rotation=90, fontsize=14, color='gray')
+	plt.text(0.65*a_rec, 1.6e-3, r'$z_{\mathrm{rec}}$', rotation=90, fontsize=14, color='gray')
+
 	print('[utils.py] Now for LiMR cosmologies...')
+
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
-		rho_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]]']
+		rho_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]']
 		rho_cdm_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_cdm']
-		for rhos in [rho_LiMR, rho_cdm_LiMR]:
+		p_LiMR = globals()[f'cosmo_{root}']['background']['(.)p_ncdm[0]']
+		rho_m_LiMR = rho_m_LCDM - rho_cdm_LCDM + rho_cdm_LiMR + rho_LiMR - 3*p_LiMR
+
+		for rhos in [rho_LiMR]:
 			Omega_i = rhos/rho_crit
 			plt.loglog(
 				a_array,
 				Omega_i,
-				c=cosmo_color('FD'),
+				c = cs[2*i%5],
 				lw=2.0,
-				# ls='--',
+				ls='-',
 				# zorder=0,
-				# label=rhos
+				label=gen_label(Delta_Neffs[i],z_NRs[i])
 				)
-	# plt.legend(fontsize=14) 
+		a_NR = 1/(1+z_NRs[i])
+		# plt.axvline(a_NR, c=cs[2*i%5], ls='--', lw=1.0, alpha=0.7, zorder=0)
+	plt.legend(fontsize=12,loc='lower left', frameon=False)
 
-
+def gen_label(Delta_Neff,z_NR):
+	log10z_NR = round(np.log10(z_NR))
+	return r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+',\,\,z_{\mathrm{NR}}=10^{'+str(log10z_NR)+'}$'
 # def plot_distributions_log(Delta_Neff=0.3,z_NR=1e3):
 # 	# choose LN sigma grid for plotting continuous band
 # 	sigma_min = 0.04

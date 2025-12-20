@@ -5,6 +5,7 @@ x = None
 sigma_array = [x]
 # print(sigma_array != None)
 print(sigma_array != None and len(sigma_array) > 0)
+
 # # Initialize CLASS
 # cosmo = Class()
 

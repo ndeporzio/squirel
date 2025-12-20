@@ -9,6 +9,7 @@ from classy import Class
 import pickle
 import os 
 import time
+import inspect
 T0CMB = 2.7255 # in Kelvin
 nu_factor = (4/11)**(1/3)  # T_nu0 (instantaneous decoupling) / T_CMB0
 T0nu = T0CMB*0.71611 # with precise decoupling, in Kelvin
@@ -38,8 +39,35 @@ def Qn(f,n,sigma=1):
 	elif f == f_LN:
 		return integrate.quad(lambda xi: xi**(2+n)*f(xi,sigma), 0, np.inf)[0]
 	else: 
-		print('[utils.py] (ERROR) Distrib not recognised, assuming FD.')
+		log('Distrib not recognised, assuming FD.', level='ERROR')
 		return integrate.quad(lambda xi: xi**(2+n)*f_FD(xi), 0, np.inf)[0]
+
+
+def log(msg, level='INFO'):
+	"""Small logging helper that auto-inserts source filename and caller function name.
+
+	Format: [filename][function][LEVEL] message
+	"""
+	try:
+		# Prefer the immediate caller frame; walk up if filename is non-informative.
+		f = inspect.currentframe()
+		caller = f.f_back
+		# walk up until a sensible filename is found (not <string> or <stdin>) or we run out
+		while caller is not None:
+			fname = inspect.getframeinfo(caller).filename
+			if fname and fname not in ('<string>', '<stdin>'):
+				filename = os.path.basename(fname)
+				func = caller.f_code.co_name
+				break
+			caller = caller.f_back
+		else:
+			# fallback
+			filename = os.path.basename(__file__)
+			func = '<module>'
+	except Exception:
+		filename = os.path.basename(__file__)
+		func = '<module>'
+	print(f'[{filename}][{func}][{level}]', msg)
 
 
 def build_LN_Q_cache(sigma_array, output_dir='../data/distribution_data/LN_Q_cache/'):
@@ -123,7 +151,7 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, head_dir='../dat
 		m_dict[case] = m_chi(T0_dict[case], z_NR, Q0_dict[case], Q1_dict[case])
 
 	# If sigma grid is requested, add entries for each sigma.
-	if sigma_array != None and len(sigma_array) > 0:
+	if sigma_array is not None and len(sigma_array) > 0:
 		# Ensure LN Q-cache exists for these sigmas
 		output_dir = head_dir+'distribution_data/LN_Q_cache'
 		q_cache = build_LN_Q_cache(sigma_array, output_dir=output_dir)
@@ -200,8 +228,11 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
 	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
+	
+	if sigma == None:
+		sigma = 0.5
 	if T0_dict == None or m_dict == None:
-		T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR,np.asarray(sigma),head_dir)
+		T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR,[sigma],head_dir)
 	
 	nu_ur_array = [
 		3.044,
@@ -240,9 +271,9 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	# if directory does not exist at this path create it now
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
-		print('[utils.py] Created directory:', output_dir)
+		log(f'Created directory: {output_dir}')
 
-	print('[utils.py] Computing CLASS with', case, 'parameters.')
+	log(f'Computing CLASS with {case} parameters.')
 	# Modify parameters if N_mnu > 0 
 	if N_mnu>0:
 		m_ncdm_str = ','+','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
@@ -265,9 +296,16 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 		})
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)
 	elif case in ['FD', 'BE', 'RD', 'LN']:
-		# Need to fix m_dict for LN case
-		m_ncdm_str = str(m_dict[case])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
-		T_ncdm_str = str(T0_dict[case])+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
+		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
+		if case == 'LN':
+			case_key = f'LN_{sigma:.3f}'
+			root = root + '_sigma=' + str(sigma)
+			log(f'Using LN sigma: {sigma}')
+		else:
+			case_key = case
+
+		m_ncdm_str = str(m_dict[case_key])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
+		T_ncdm_str = str(T0_dict[case_key])+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
 		deg_ncdm_str = str(float(g_dict[case]/2))+ deg_ncdm_str # Potentially non-standard deg_ncdm for LiMR, default for massive nus
 		cosmo.set({
 			'N_ncdm':N_mnu+1,
@@ -280,16 +318,10 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 			'ncdm_a':ncdm_scaler(case,N_mnu),
 			'ncdm_maximum_q':ncdm_qmax(case,N_mnu),
 		})	
-		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
-		if case == 'LN':
-			if sigma == None:
-				sigma = 0.5
-				print('[utils.py] No sigma provided, using default sigma:', sigma)
-			root = root + '_sigma=' + str(sigma)
 	else:
 		root = output_dir+case
 	if fixed == 'theta_s100':
-		print('[utils.py] Fixed 100*theta_s requested, H0 will instead vary.')
+		log('Fixed 100*theta_s requested, H0 will instead vary.')
 		cosmo.set({'100*theta_s':theta_s100})
 	
 	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
@@ -301,7 +333,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	time1 = time.time()
 	cosmo.compute()
 	time2 = time.time()
-	print('[utils.py] CLASS computation took', time2-time1, 'seconds.')
+	log(f'CLASS computation took {time2-time1} seconds.')
 
 	# save output to file
 	filename = root + '_output.pkl'
@@ -321,41 +353,53 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 	}
 	with open(filename, 'wb') as f:
 		pickle.dump(output_data, f)
-	print('[utils.py] CLASS output saved to:', filename)
+	log(f'CLASS output saved to: {filename}')
 
 	cosmo.struct_cleanup()
 	cosmo.empty()
 
 	return output_data
 
-def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
+def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
 	""" Pickle output from CLASS for a set of cosmological cases.
 	Then create global variables for each case with the output data.
 	"""
 	output_dir = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'
 	for case in cases:
 		root = output_dir+case
-		if case == 'DR':
-			root = output_dir+case+'_DNeff='+str(Delta_Neff)
-		elif case in ['FD', 'BE', 'RD']:
-			root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
-		filename = root + '_output.pkl'
-		if os.path.exists(filename):
-			with open(filename, 'rb') as f:
-				output_data = pickle.load(f)
-			print('[utils.py] Loaded CLASS output for', case, 'from:', filename)
+		if case != 'LN':
+			if case == 'DR':
+				root = output_dir+case+'_DNeff='+str(Delta_Neff)
+			elif case in ['FD', 'BE', 'RD']:
+				root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
+			filename = root + '_output.pkl'
+			if os.path.exists(filename):
+				with open(filename, 'rb') as f:
+					output_data = pickle.load(f)
+					log(f'Loaded CLASS output for {case} from: {filename}')
+			else:
+				output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, T0_dict=T0_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed=fixed, head_dir=head_dir)
+				log(f'Saved CLASS output for {case} to: {filename}')
+			globals()[f'cosmo_{root}'] = output_data
 		else:
-			output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma_array, T0_dict, m_dict, N_mnu, M_mnu, fixed, head_dir)
-		globals()[f'cosmo_{root}'] = output_data
+			for sigma in sigma_array:
+				root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_sigma='+str(sigma)
+				filename = root + '_output.pkl'
+				if os.path.exists(filename):
+					with open(filename, 'rb') as f:
+						output_data = pickle.load(f)
+						log(f'Loaded CLASS output for {case} from: {filename}')
+				else:
+					output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma=sigma, T0_dict=T0_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed=fixed, head_dir=head_dir)
+					log(f'Saved CLASS output for {case} to: {filename}')
+				globals()[f'cosmo_{root}'] = output_data
 
 #
 # Plotting functions
 #
-def plot_distributions_lin(Delta_Neff=0.3,z_NR=1e3):
+def plot_distributions_lin(Delta_Neff=0.3,z_NR=1e3,sigma_min=0.04,sigma_max=1.5,n_sigma=200):
+	# plot curves, that when integrated over log \xi would give the non-relativistic energy density for LiMRs of the given Delta_Neff and z_NR
 	# choose LN sigma grid for plotting continuous band
-	sigma_min = 0.04
-	sigma_max = 1.5
-	n_sigma = 200
 	sigma_array = np.linspace(sigma_min, sigma_max, n_sigma)
 
 	# request LiMR parameters including per-sigma entries (this uses the LN Q-cache)
@@ -430,7 +474,7 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		fill_cosmos(cases=['LCDM','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, head_dir=head_dir)
 
-	print('[utils.py] Plotting background density evolution for', N_mnu, 'massive neutrinos of', M_mnu, 'total eV.')
+	log(f'Plotting background density evolution for {N_mnu} massive neutrinos of {M_mnu} total eV.')
 	root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
 	z_array = globals()[f'cosmo_{root}']['background']['z']
 	a_array = 1/(1+z_array)
@@ -479,7 +523,7 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 	plt.text(0.65*a_eq, 1.6e-3, r'$z_{\mathrm{eq}}$', rotation=90, fontsize=14, color='gray')
 	plt.text(0.65*a_rec, 1.6e-3, r'$z_{\mathrm{rec}}$', rotation=90, fontsize=14, color='gray')
 
-	print('[utils.py] Now for LiMR cosmologies...')
+	log('Now for LiMR cosmologies...')
 
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
@@ -594,9 +638,9 @@ def cosmo_color(case='LCDM'):
 	try:
 		return colors_dict[case]
 	except:
-		print('[utils.py] (ERROR) Case not recognised, available cosmo scenarios are:')
-		print('[utils.py] \t(1) Key: FD - FD distribution')
-		print('[utils.py] \t(2) Key: BE - BE distribution')
-		print('[utils.py] \t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution')
-		print('[utils.py] \t(4) Key: LN - Log-normal proxy distribution')
+		log('Case not recognised, available cosmo scenarios are:', level='ERROR')
+		log('\t(1) Key: FD - FD distribution', level='ERROR')
+		log('\t(2) Key: BE - BE distribution', level='ERROR')
+		log('\t(3) Key: RD - Out-of-equilibrium relativistic decay product distribution', level='ERROR')
+		log('\t(4) Key: LN - Log-normal proxy distribution', level='ERROR')
 		return 'k'

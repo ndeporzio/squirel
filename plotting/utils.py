@@ -4,6 +4,7 @@ from scipy.special import zeta
 import matplotlib as mpl
 import scipy.integrate as integrate
 from scipy import constants
+from scipy import interpolate
 from classy import Class
 # modules for data I/O
 import pickle
@@ -113,7 +114,8 @@ def m_chi(T0chi,z_NR,Q0,Q1):
 
 # LiMR physical matter density 
 def omega_chi(Delta_Neff,z_NR):
-	return Delta_Neff*(1+z_NR)*(7*np.pi**4/120)**(-1)*3/2*zeta(3)*T0nu*K_to_eV/93.14 
+	omega_gamma = 2.47298e-05 # in CLASS units
+	return 7/8*nu_factor**4*Delta_Neff*(1+z_NR)*omega_gamma  
 
 # Precomputed moments for canonical distributions
 Q0_dict = {
@@ -151,6 +153,9 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, head_dir='../dat
 		m_dict[case] = m_chi(T0_dict[case], z_NR, Q0_dict[case], Q1_dict[case])
 
 	# If sigma grid is requested, add entries for each sigma.
+	# I need to modify this to allow single sigma or array of sigmas
+	if type(sigma_array) is int or type(sigma_array) is float:
+		sigma_array = [sigma_array]
 	if sigma_array is not None and len(sigma_array) > 0:
 		# Ensure LN Q-cache exists for these sigmas
 		output_dir = head_dir+'distribution_data/LN_Q_cache'
@@ -166,9 +171,70 @@ def LiMR_parameters(Delta_Neff=0.3, z_NR=1e3, sigma_array=None, head_dir='../dat
 
 	return T0_dict, m_dict
 
-def_T0_dict, def_m_dict = LiMR_parameters(sigma_array=None)
-# print(def_T0_dict, def_m_dict)
+# def_T0_dict, def_m_dict = LiMR_parameters(sigma_array=[0.04,1.5])
 
+def chi_scaling(Delta_Neff=0.3,z_NR=1e3,case='FD',sigma=None):
+	# returns the distribution dependent redshifting factor A(a) multiplying the present energy density to give a^3*rho(a) for a LiMR,
+	# thus, it scales like a^-1 at early times and transitions to a^0 at late times
+	# also gives the similar factors B(a) and C(a) = A(a) - B(a) for rho_rel(a) and rho_nr(a) = rho(a)-rho_rel(a) respectively, 
+	# using that rho_rel(a) is prop to (three times) the pressure
+
+	T0_dict, m_dict = LiMR_parameters(Delta_Neff,z_NR,sigma_array=sigma,head_dir='../data/')
+	if case == 'LN':
+		key = f'LN_{sigma:.3f}'
+		T0 = T0_dict[key]
+		m = m_dict[key]
+	else:
+		T0, m = T0_dict[case], m_dict[case]
+	T0 = T0*T0CMB*K_to_eV
+	f = eval(f'f_{case}')
+	norm = m/T0*Qn(f,0,sigma=sigma)
+
+	# smart choice for array of a values – needs to be dense around a_NR but can be sparse where linear elsewhere
+	a_NR = 1/(z_NR+1)
+
+	# a_array = np.concatenate([np.logspace(-6,np.log10(0.01*a_NR),10),np.logspace(np.log10(0.01*a_NR),np.log10(10*a_NR),100)[1:-1],np.logspace(np.log10(100*a_NR),0,10)])
+	a_array = np.concatenate([np.logspace(-10,np.log10(0.999*a_NR),100),np.asarray([a_NR]),np.logspace(np.log10(1.001*a_NR),0,100)])
+
+	A_array = []
+	B_array = []
+	for a in a_array:
+		if case == 'LN':
+			A_array.append(a**(-1)*integrate.quad(lambda xi: xi**2*np.sqrt(xi**2+(a*m/T0)**2)*f(xi,sigma), 0, np.inf)[0])
+			B_array.append(3*a**(-1)*integrate.quad(lambda xi: xi**4/(3*np.sqrt(xi**2+(a*m/T0)**2))*f(xi,sigma), 0, np.inf)[0])
+		else:
+			# A uses the enrgy density integral, B uses the pressure integral
+			A_array.append(a**(-1)*integrate.quad(lambda xi: xi**2*np.sqrt(xi**2+(a*m/T0)**2)*f(xi), 0, np.inf)[0])
+			B_array.append(3*a**(-1)*integrate.quad(lambda xi: xi**4/(3*np.sqrt(xi**2+(a*m/T0)**2))*f(xi), 0, np.inf)[0])
+	
+	A_array = np.asarray(A_array)/norm
+	B_array = np.asarray(B_array)/norm
+	C_array = A_array - B_array
+	
+	A_func = interpolate.CubicSpline(a_array,A_array)
+	B_func = interpolate.CubicSpline(a_array,B_array)
+	C_func = interpolate.CubicSpline(a_array,C_array)
+
+	return A_func, B_func, C_func
+
+def plot_scaling(Delta_Neff=0.3,z_NR=1e3,case='FD',sigma=None):
+	A_func, B_func, C_func = chi_scaling(Delta_Neff,z_NR,case,sigma)
+	a_array = np.logspace(-6,0,1000)
+	print(A_func(a_array))
+
+	plt.loglog(a_array,A_func(a_array),label=r'$A(a)\propto \rho_\chi(a)$')
+	plt.loglog(a_array,B_func(a_array),label=r'$B(a)\propto \rho^\mathrm{rel}_\chi(a)$')
+	plt.loglog(a_array,C_func(a_array),label=r'$C(a)\propto \rho^\mathrm{nr}_\chi(a)$')
+	plt.xlabel(r'$a$')
+	plt.ylabel(r'$R(a)$')
+
+	a_NR = 1/(z_NR+1)
+	print(A_func(a_NR))
+	set_xy_lims(xmin=0.1*a_NR, xmax=10*a_NR, ymin=0.1, ymax=A_func(0.1*a_NR))
+	# add vertical line at a_NR
+	plt.axvline(a_NR, c='gray', ls='--', lw=1.0, alpha=0.7)
+	plt.legend()
+	
 
 def ncdm_flags(case,sigma=None):
 	ncdm_flags_dict = {
@@ -219,16 +285,19 @@ def ncdm_qmax(case,N_mnu=1):
 		qmax = 15 # this will be overwritten with value from interpolation table for LN distribution, and q_min != 0 chosen as well
 	return ','.join([str(qmax) for x in range(N_mnu+1)])
 
-def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
+def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/',save=True):
 	"""Run CLASS for a given case and save outputs.
 
 	This function writes a pickle with CLASS outputs. Files are written under `head_dir+'/fixed={fixed}/N_mnu={str(N_mnu)}_Mmnu={str(M_mnu)}/'`.
 	"""
 	h = 0.67810                       # Dimensionless reduced Hubble parameter (H_0 / (100km/s/Mpc))
-	theta_s100 = 1.041783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
+	theta_s100 = 1.051783             # Angular size of the sound horizon, exactly 100(ds_dec/da_dec)
 	omega_m = 0.1431354439            # Reduced total matter density (Omega*h^2) (Exactly, omega_m = omega_b + omega_cdm + omega_mnu with Mnu=0.06 eV)
 	omega_cdm = 0.1201075             # Reduced cold dark matter density in absence of LiMRs (Omega*h^2)
-	
+	omega_b = omega_m - omega_cdm
+
+
+
 	if sigma == None:
 		sigma = 0.5
 	if T0_dict == None or m_dict == None:
@@ -263,6 +332,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 		'output_verbose': 1,
 		'N_ur':nu_ur_array[N_mnu],
 		'omega_m':omega_m, 
+		'omega_b':omega_b,
 		# Fix physical matter density, meaning a_eq will decrease with increasing z_NR from that of the equivalent DNeff DR cosmology down to LCDM
 		# Although this does not isolate effect of radiation driving (see, e.g., 2503.04671), it more closely matches MCMC output and keeps rho_tot fixed since H0 is also fixed
 	})
@@ -275,19 +345,16 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 
 	log(f'Computing CLASS with {case} parameters.')
 	# Modify parameters if N_mnu > 0 
+	
 	if N_mnu>0:
-		m_ncdm_str = ','+','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
-		T_ncdm_str = ','+','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
+		m_ncdm_str = ','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
+		T_ncdm_str = ','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
 		cosmo.set({
 			'N_ncdm':N_mnu,
 			'm_ncdm':m_ncdm_str,
 			'T_ncdm':T_ncdm_str,
 		})
-		deg_ncdm_str = ','+','.join(['1' for x in range(N_mnu)]) # g = 2 for massive neutrinos
-	else:
-		m_ncdm_str = ''
-		T_ncdm_str = ''
-		deg_ncdm_str = ''
+		deg_ncdm_str = ','.join(['1' for x in range(N_mnu)]) # g = 2 for massive neutrinos
 	
 	# Now go case by case for non-LCDM cosmologies
 	if case == 'DR':
@@ -304,9 +371,15 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 		else:
 			case_key = case
 
-		m_ncdm_str = str(m_dict[case_key])+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
-		T_ncdm_str = str(T0_dict[case_key])+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
-		deg_ncdm_str = str(float(g_dict[case]/2))+ deg_ncdm_str # Potentially non-standard deg_ncdm for LiMR, default for massive nus
+		if N_mnu>0:
+			m_ncdm_str = str(m_dict[case_key])+','+m_ncdm_str # Append LiMR mass to baseline neutrino masses if any
+			T_ncdm_str = str(T0_dict[case_key])+','+T_ncdm_str # Append LiMR characteristic momentum to baseline neutrino temperatures if any	
+			deg_ncdm_str = str(float(g_dict[case]/2))+','+deg_ncdm_str # Potentially non-standard deg_ncdm for LiMR, default for massive nus
+		else:
+			m_ncdm_str = str(m_dict[case_key])
+			T_ncdm_str = str(T0_dict[case_key])
+			deg_ncdm_str = str(float(g_dict[case]/2))
+		
 		cosmo.set({
 			'N_ncdm':N_mnu+1,
 			'm_ncdm':m_ncdm_str,
@@ -351,14 +424,21 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dic
 		'pk': pk,
 		'derived': derived,
 	}
-	with open(filename, 'wb') as f:
-		pickle.dump(output_data, f)
-	log(f'CLASS output saved to: {filename}')
+	if save:
+		with open(filename, 'wb') as f:
+			pickle.dump(output_data, f)
+		log(f'CLASS output saved to: {filename}')
 
 	cosmo.struct_cleanup()
 	cosmo.empty()
 
 	return output_data
+
+def test_CLASS(case='FD', Delta_Neff=0.3, z_NR=1e3, sigma=None, T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/', save=False):
+	log(f'Testing CLASS for case {case}.')
+	log(f'If LiMR, Delta_Neff = {Delta_Neff}, z_NR = {z_NR}')
+	log(f'Thus, if LiMR, omega_chi shoud be {omega_chi(Delta_Neff,z_NR)}')
+	output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma, T0_dict, m_dict, N_mnu, M_mnu, fixed, head_dir, save)
 
 def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], T0_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed='h', head_dir='../data/'):
 	""" Pickle output from CLASS for a set of cosmological cases.
@@ -462,17 +542,11 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 	This function plots the bg energy density evolution for LCDM (with N_mnu massive neutrinos) and for possibly multiple FD LiMR cosmologies.
 	It assumes H0 is fixed to 67.81 km/s/Mpc
 	"""
-	cs = [
-		'#dc267f',
-		'#785ef0',
-		'#648fff',
-		'#ffb000',
-		'#fe6100',
-	]
-
+	cs = IBM_cscheme()
+	
 	# fill out arrays for background values for plotting, using fill_cosmos
 	for i, Delta_Neff in enumerate(Delta_Neffs):
-		fill_cosmos(cases=['LCDM','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, head_dir=head_dir)
+		fill_cosmos(cases=['LCDM','DR','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, head_dir=head_dir)
 
 	log(f'Plotting background density evolution for {N_mnu} massive neutrinos of {M_mnu} total eV.')
 	root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
@@ -526,30 +600,99 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 	log('Now for LiMR cosmologies...')
 
 	for i, Delta_Neff in enumerate(Delta_Neffs):
-		root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
-		rho_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]']
-		rho_cdm_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_cdm']
-		p_LiMR = globals()[f'cosmo_{root}']['background']['(.)p_ncdm[0]']
+		DR_root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
+		LiMR_root = head_dir+'fixed=h/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
+		rho_equiv_DR = globals()[f'cosmo_{DR_root}']['background']['(.)rho_ur']-rho_ur_LCDM
+		rho_LiMR = globals()[f'cosmo_{LiMR_root}']['background']['(.)rho_ncdm[0]']
+		rho_cdm_LiMR = globals()[f'cosmo_{LiMR_root}']['background']['(.)rho_cdm']
+		p_LiMR = globals()[f'cosmo_{LiMR_root}']['background']['(.)p_ncdm[0]']
 		rho_m_LiMR = rho_m_LCDM - rho_cdm_LCDM + rho_cdm_LiMR + rho_LiMR - 3*p_LiMR
+		rho_dict = {
+			'LiMR':rho_LiMR,
+			'DR':rho_equiv_DR,
+			'm_tot':rho_m_LiMR,
+		}
 
-		for rhos in [rho_LiMR]:
+		# for j, rhos in enumerate([rho_LiMR,rho_equiv_DR]):
+		for species in ['LiMR','DR']:
+			rhos = rho_dict[species]
 			Omega_i = rhos/rho_crit
-			plt.loglog(
-				a_array,
-				Omega_i,
-				c = cs[2*i%5],
-				lw=2.0,
-				ls='-',
-				# zorder=0,
-				label=gen_label(Delta_Neffs[i],z_NRs[i])
+			if species == 'LiMR':
+				plt.loglog(
+					a_array,
+					Omega_i,
+					c = cs[2*i%5],
+					lw=2.0,
+					ls='-',
+					# zorder=0,
+					label=gen_label(Delta_Neffs[i],z_NRs[i])
+				)
+			elif species == 'DR':
+				plt.loglog(
+					a_array,
+					Omega_i,
+					c = cs[2*i%5],
+					lw=1.5,
+					ls='--',
+					# zorder=0,
+				)
+			elif species == 'm_tot':
+				plt.loglog(
+					a_array,
+					Omega_i,
+					c = cs[2*i%5],
+					lw=2.0,
+					ls='-',
+					# zorder=0,
 				)
 		a_NR = 1/(1+z_NRs[i])
 		# plt.axvline(a_NR, c=cs[2*i%5], ls='--', lw=1.0, alpha=0.7, zorder=0)
 	plt.legend(fontsize=12,loc='lower left', frameon=False)
 
-def gen_label(Delta_Neff,z_NR):
-	log10z_NR = round(np.log10(z_NR))
-	return r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+',\,\,z_{\mathrm{NR}}=10^{'+str(log10z_NR)+'}$'
+def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed='h', lensed=True, head_dir='../data/'):
+	"""
+	This function plots the Cls for LCDM (with N_mnu massive neutrinos) and for possibly multiple FD LiMR cosmologies.
+	"""
+	cs = IBM_cscheme()
+
+	# fill out arrays for cl values for plotting, using fill_cosmos
+	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed=fixed, head_dir=head_dir)
+	root = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
+	ell = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
+	lensed_clTT_LCDM = globals()[f'cosmo_{root}']['lensed_cls']['tt'][2:]
+	unlensed_clTT_LCDM = globals()[f'cosmo_{root}']['unlensed_cls']['tt'][2:2501]
+
+	for i, Delta_Neff in enumerate(Delta_Neffs):
+		fill_cosmos(cases=['DR','FD'], Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed=fixed, head_dir=head_dir)
+		for case in ['DR','FD']:
+			if case == 'DR':
+				root = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
+			elif case == 'FD':
+				root = head_dir+'fixed='+fixed+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
+			lensed_clTT = globals()[f'cosmo_{root}']['lensed_cls']['tt'][2:]
+			unlensed_clTT = globals()[f'cosmo_{root}']['unlensed_cls']['tt'][2:2501]
+			if lensed:
+				plt.plot(
+					ell,
+					(lensed_clTT_LCDM-lensed_clTT)/lensed_clTT_LCDM,
+					c=cs[2*i%5],
+					lw=1.5 if case == 'FD' else 1.0,
+					ls='-' if case == 'FD' else '--',
+					# zorder=0,
+					# label=gen_label(Delta_Neffs[i],z_NRs[i])
+				)
+			else:
+				plt.plot(
+					ell,
+					(unlensed_clTT_LCDM-unlensed_clTT)/unlensed_clTT_LCDM,
+					c=cs[2*i%5],
+					lw=1.5 if case == 'FD' else 1.0,
+					ls='-' if case == 'FD' else '--',
+					# zorder=0,
+				)
+
+
+
 # def plot_distributions_log(Delta_Neff=0.3,z_NR=1e3):
 # 	# choose LN sigma grid for plotting continuous band
 # 	sigma_min = 0.04
@@ -613,6 +756,19 @@ def gen_label(Delta_Neff,z_NR):
 # 	return ymax_rounded
 
 # Plotting visual settings
+def IBM_cscheme():
+	return [
+		'#dc267f',
+		'#785ef0',
+		'#648fff',
+		'#ffb000',
+		'#fe6100',
+	]
+
+def gen_label(Delta_Neff,z_NR):
+	log10z_NR = round(np.log10(z_NR))
+	return r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+',\,\,z_{\mathrm{NR}}=10^{'+str(log10z_NR)+'}$'
+
 def set_xy_lims(xmin=10, xmax=1000, ymin=1, ymax=1000):
 	plt.xlim(xmin, xmax)
 	plt.ylim(ymin, ymax)

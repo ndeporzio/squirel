@@ -6,8 +6,8 @@ from classy import Class
 # this scripts illustrates how to adjust omega_c to fix a_eq in LiMR cosmologies
 # this builds on the varying_neff.py CLASS script and various studies which fix a_eq with extra ur species
 
-Delta_Neffs = [0.3,0.094,0.02]
-Delta_Neffs = [0.2,0.2,0.2]
+Delta_Neffs = [0.1,0.05,0.02]
+Delta_Neffs = [0.1,0.1,0.1]
 z_NRs =[1e3,1e4,1e5]
 # Delta_Neffs = [.3,.6,.9]
 # z_NRs = np.ones(3)*10

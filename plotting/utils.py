@@ -5,6 +5,7 @@ import matplotlib as mpl
 import scipy.integrate as integrate
 from scipy import constants
 from scipy import interpolate
+from scipy import signal
 from classy import Class
 from getdist import MCSamples, plots
 # modules for data I/O
@@ -12,6 +13,10 @@ import pickle
 import os 
 import time
 import inspect
+from procoli import lkl_prof
+from procoli.procoli_io import get_MP_bf_dict
+from procoli.procoli_plots import plot_profile_list, plot_profile_and_parabola_diff_list, get_SA_step_chains_chi2, plot_SA_min_chains, get_SA_step_chains, plot_SA_chains
+
 T0CMB = 2.7255 # in Kelvin
 nu_factor = (4/11)**(1/3)  # T_nu0 (instantaneous decoupling) / T_CMB0
 T0nu = T0CMB*0.71611 # with precise decoupling, in Kelvin
@@ -279,7 +284,7 @@ def ncdm_qmax(case,N_mnu=1):
 		qmax = 15 # this will be overwritten with value from interpolation table for LN distribution, and q_min != 0 chosen as well
 	return ','.join([str(qmax) for x in range(N_mnu+1)])
 
-def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',save=True):	
+def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',save=True,precisions=False):	
 	"""Run CLASS for a given case and save outputs.
 
 	This function writes a pickle with CLASS outputs. Files are written under `head_dir+'/fixed={fixed1},{fixed2}/N_mnu={str(N_mnu)}_Mmnu={str(M_mnu)}/'`.
@@ -304,11 +309,8 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dic
 		0.00441
 	] # Massless neutrino contribution to Neff for N_mnu = 0,1,2,3 massive nus respectively
 
-    # Initialize CLASS
-	cosmo = Class()
-
-    # Use default parameters
-	cosmo.set({
+    # default parameters
+	params = {
 		'output':'tCl,pCl,lCl,mPk',
 		'P_k_max_1/Mpc':10,
 		'l_max_scalars':2500,
@@ -329,10 +331,10 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dic
 		'A_s':2.100549e-09,
         'n_s':0.9660499,
         'tau_reio':0.05430842,
-	})
+	}
 
 	if fixed2 == 'omega_m':
-		cosmo.set({'omega_m':omega_m_LCDM})
+		params['omega_m'] = omega_m_LCDM
 		log(f'Fixed omega_m to {omega_m_LCDM}')
 		# Fix physical matter density, meaning a_eq will decrease with increasing z_NR from that of the equivalent DNeff DR cosmology down to LCDM
 		# Although this does not isolate effect of radiation driving (see, e.g., 2503.04671), it more closely matches MCMC output and keeps rho_tot fixed when H0 is also fixed
@@ -341,44 +343,37 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dic
 		def_a_eq = (1+7/8*pow(4/11,4/3)*3.044)*omega_gamma/(omega_cdm_LCDM+omega_b)
 		log(f' Default a_eq = {def_a_eq}, corresponding to z_eq = {1/def_a_eq-1}')
 		if case == 'LCDM':
-			cosmo.set({'omega_cdm':omega_cdm_LCDM})
+			params['omega_cdm'] = omega_cdm_LCDM
 			log(f'Fixed omega_cdm to {omega_cdm_LCDM} for case LCDM')
 		elif case == 'DR':	
-			omega_c = omega_c = def_a_eq**(-1)*(1+7/8*pow(4/11,4/3)*(3.044+Delta_Neff))*omega_gamma - omega_b
-			cosmo.set({'omega_cdm':omega_c})
+			omega_c = def_a_eq**(-1)*(1+7/8*pow(4/11,4/3)*(3.044+Delta_Neff))*omega_gamma - omega_b
+			params['omega_cdm'] = omega_c
 			log(f'Adjusted omega_cdm to {omega_c} for case DR')
 		else:
 			omega_chi0 = omega_chi(Delta_Neff,z_NR)
 			A_func, B_func, C_func = chi_scaling(Delta_Neff,z_NR,case,sigma)
 			omega_c = def_a_eq**(-1)*(1+7/8*pow(4/11,4/3)*3.044)*omega_gamma + (B_func(def_a_eq)-C_func(def_a_eq))*omega_chi0-omega_b
-			cosmo.set({'omega_cdm':omega_c})
+			params['omega_cdm'] = omega_c
 			log(f'Adjusted omega_cdm to {omega_c} for case {case} of omega_chi = {omega_chi0}')
 
 	fixed_str = 'fixed='+fixed1+','+fixed2
 	output_dir = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'
 	# if directory does not exist at this path create it now
-	if not os.path.exists(output_dir):
+	if save and not os.path.exists(output_dir):
 		os.makedirs(output_dir)
 		log(f'Created directory: {output_dir}')
-
-	log(f'Computing CLASS with {case} parameters.')
-	# Modify parameters if N_mnu > 0 
 	
 	if N_mnu>0:
 		m_ncdm_str = ','.join([str(M_mnu/N_mnu) for x in range(N_mnu)]) # Baseline for LCDM and DR cosmologies, to be appended for LiMR cosmologies
 		T_ncdm_str = ','.join(['0.71611' for x in range(N_mnu)])  # Standard neutrino temperature today in units of T_CMB0
-		cosmo.set({
-			'N_ncdm':N_mnu,
-			'm_ncdm':m_ncdm_str,
-			'T_ncdm':T_ncdm_str,
-		})
+		params['N_ncdm'] = N_mnu
+		params['m_ncdm'] = m_ncdm_str
+		params['T_ncdm'] = T_ncdm_str
 		deg_ncdm_str = ','.join(['1' for x in range(N_mnu)]) # g = 2 for massive neutrinos
 	
 	# Now go case by case for non-LCDM cosmologies
 	if case == 'DR':
-		cosmo.set({
-			'N_ur':nu_ur_array[N_mnu]+Delta_Neff,
-		})
+		params['N_ur'] = nu_ur_array[N_mnu] + Delta_Neff
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)
 	elif case in ['FD', 'BE', 'RD', 'LN']:
 		root = output_dir+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)
@@ -398,30 +393,37 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dic
 			T_ncdm_str = str(qc_dict[case_key])
 			deg_ncdm_str = str(float(g_dict[case]/2))
 		
-		cosmo.set({
-			'N_ncdm':N_mnu+1,
-			'm_ncdm':m_ncdm_str,
-			'T_ncdm':T_ncdm_str,
-			'deg_ncdm':deg_ncdm_str,
-			'ncdm_psd_parameters':ncdm_flags(case,sigma),
-			'ncdm_quadrature_strategy':ncdm_strategy(case,sigma,N_mnu),
-			'ncdm_N_momentum_bins':ncdm_bins(case,N_mnu),
-			'ncdm_a':ncdm_scaler(case,N_mnu),
-			'ncdm_maximum_q':ncdm_qmax(case,N_mnu),
-		})	
+		params['N_ncdm'] = N_mnu+1
+		params['m_ncdm'] = m_ncdm_str
+		params['T_ncdm'] = T_ncdm_str
+		params['deg_ncdm'] = deg_ncdm_str
+		params['ncdm_psd_parameters'] = ncdm_flags(case,sigma)
+		params['ncdm_quadrature_strategy'] = ncdm_strategy(case,sigma,N_mnu)
+		params['ncdm_N_momentum_bins'] = ncdm_bins(case,N_mnu)
+		params['ncdm_a'] = ncdm_scaler(case,N_mnu)
+		params['ncdm_maximum_q'] = ncdm_qmax(case,N_mnu)
+
 	else:
 		root = output_dir+case
 	if fixed1 == 'theta_s100':
 		log('Fixed 100*theta_s requested, H0 will instead vary.')
-		cosmo.set({'100*theta_s':theta_s100})
+		params['100*theta_s'] = theta_s100
+		# placeholder = Class()
+		# placeholder.set(params)
+		# placeholder.compute()
+		# params['h'] = placeholder.h()
+		# del params['100*theta_s']
 	
-	# pip installed class allows writing parameters but not output files oddly, those have to be saved manually
-	cosmo.set({
-		'write parameters': 'yes',
-		'root':root+'_',
-	})
+	if save:
+		params['write parameters'] = 'yes'
+		params['root'] = root+'_'
 
 	time1 = time.time()
+	log(f'Computing CLASS with {case} parameters.')
+	cosmo = Class()
+	cosmo.set(params)
+	if precisions:
+		cosmo.set(precision_params)
 	cosmo.compute()
 	time2 = time.time()
 	log(f'CLASS computation took {time2-time1} seconds.')
@@ -453,6 +455,7 @@ def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dic
 	if case != 'LCDM' and case != 'DR':
 		m_LiMR = cosmo.get_current_derived_parameters(['m_ncdm_in_eV'])['m_ncdm_in_eV']
 		f_LiMR = cosmo.get_current_derived_parameters(['f_ncdm1'])['f_ncdm1']
+		# f_LiMR = 0.1
 		output_data['m_LiMR'] = m_LiMR
 		output_data['f_LiMR'] = f_LiMR
 		print(f'm_LiMR = {m_LiMR}, f_LiMR = {f_LiMR}')
@@ -495,7 +498,7 @@ def test_CLASS(case='FD', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_
 	log(f'Thus, if LiMR, omega_chi shoud be {omega_chi(Delta_Neff,z_NR)}')
 	output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma, qc_dict, m_dict, N_mnu, M_mnu, fixed1, fixed2, head_dir, save)
 
-def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/'):
+def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',precisions=False):
 	""" Pickle output from CLASS for a set of cosmological cases.
 	Then create global variables for each case with the output data.
 	"""
@@ -514,7 +517,7 @@ def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_arra
 					output_data = pickle.load(f)
 					log(f'Loaded CLASS output for {case} from: {filename}')
 			else:
-				output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
+				output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir, precisions=precisions)
 				log(f'Saved CLASS output for {case} to: {filename}')
 			globals()[f'cosmo_{root}'] = output_data
 		else:
@@ -526,7 +529,7 @@ def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_arra
 						output_data = pickle.load(f)
 						log(f'Loaded CLASS output for {case} from: {filename}')
 				else:
-					output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma=sigma, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
+					output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma=sigma, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir, precisions=precisions)
 					log(f'Saved CLASS output for {case} to: {filename}')
 				globals()[f'cosmo_{root}'] = output_data
 
@@ -721,23 +724,23 @@ def plot_Hubbles(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, 
 				ls='-' if species == 'LiMR' else '--',
 			)
 
-def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/'):
+def plot_vs_LCDM_residuals(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/',precisions=False, showpeaks=False):
 	"""
 	This function plots the Cl residuals w.r.t LCDM (with N_mnu massive neutrinos) for DR and FD LiMR cosmologies.
 	"""
 	cs = IBM_cscheme()
 	fixed_str = 'fixed='+fixed1+','+fixed2
 	# fill out arrays for cl values for plotting, using fill_cosmos
-	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
+	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
 	root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
 	ell = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
-	lensed_clTT_LCDM = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
-	unlensed_clTT_LCDM = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
+	lensed_cl_LCDM = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
+	unlensed_cl_LCDM = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
 	
 	f_LiMRs = np.zeros(len(Delta_Neffs))
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		cases = ['FD']
-		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
+		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
 		for case in cases:
 			if case == 'DR':
 				root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
@@ -752,12 +755,12 @@ def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 
 				# 	plt.axvline(ell_NR, c='gray', ls='--', lw=1.0, alpha=0.5)
 				# 	print(ell_NR)
 				
-			lensed_clTT = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
-			unlensed_clTT = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
+			lensed_cl = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
+			unlensed_cl = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
 			if lensed:
 				plt.plot(
 					ell,
-					(lensed_clTT - lensed_clTT_LCDM)/lensed_clTT_LCDM,
+					(lensed_cl - lensed_cl_LCDM)/lensed_cl_LCDM,
 					c=cs[i],
 					lw=1.5 if case == 'FD' else 1.0,
 					ls='-' if case == 'FD' else '--',
@@ -768,7 +771,7 @@ def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 
 			else:
 				plt.plot(
 					ell,
-					(unlensed_clTT-unlensed_clTT_LCDM)/unlensed_clTT_LCDM,
+					(unlensed_cl-unlensed_cl_LCDM)/unlensed_cl_LCDM,
 					c=cs[i],
 					lw=1.5 if case == 'FD' else 1.0,
 					ls='-' if case == 'FD' else '--',
@@ -794,6 +797,75 @@ def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 
 		sigma_minus    = data[:, 2]/muK2
 		sigma_plus     = data[:, 3]/muK2
 		plt.fill_between(planck_ell, -sigma_minus/planck_dl_tt, sigma_plus/planck_dl_tt, color='gray', alpha=0.3, zorder=-1)
+	if showpeaks:
+		# create an array of the ell value for the peaks, where the peaks are the local maxima of lensed_cl_LCDM
+		# peaks, _ = signal.find_peaks(ell*(ell+1)*lensed_cl_LCDM)
+		# peaks, _ = signal.find_peaks(lensed_cl_LCDM)
+		# peak_ells = ell[peaks]
+		peak_ells = [220.0, 538.5, 809.5, 1122.5, 1445.7, 1774, 2071, 2429] # from https://arxiv.org/pdf/1603.03091
+		# now add vertical lines at peak_ells
+		for peak_ell in peak_ells:
+			plt.axvline(peak_ell, c='purple', ls='--', lw=1.0, alpha=0.5)
+		log(f'Added peaks at {peak_ells}')
+	return f_LiMRs
+
+def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/',precisions=False):
+	"""
+	This function plots the Cls for DR and FD LiMR cosmologies.
+	"""
+	cs = IBM_cscheme()
+	fixed_str = 'fixed='+fixed1+','+fixed2
+	# fill out arrays for cl values for plotting, using fill_cosmos
+	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+	root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
+	ell = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
+	lensed_cl_LCDM = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
+	unlensed_cl_LCDM = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
+	
+	f_LiMRs = np.zeros(len(Delta_Neffs))
+	for i, Delta_Neff in enumerate(Delta_Neffs):
+		cases = ['FD']
+		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+		for case in cases:
+			if case == 'DR':
+				root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
+				label = r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+'$'
+				label = ''
+			elif case == 'FD':
+				root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/FD_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NRs[i])
+				label = gen_label(Delta_Neffs[i],z_NRs[i])
+				f_LiMRs[i] = globals()[f'cosmo_{root}']['f_LiMR']
+				# if i == 0:
+				# 	ell_NR = globals()[f'cosmo_{root}']['ell_NR']
+				# 	plt.axvline(ell_NR, c='gray', ls='--', lw=1.0, alpha=0.5)
+				# 	print(ell_NR)
+				
+			lensed_cl = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
+			unlensed_cl = globals()[f'cosmo_{root}']['unlensed_cls'][spectra][2:2501]
+			if lensed:
+				plt.plot(
+					ell,
+					ell*(ell+1)*lensed_cl/2/np.pi,
+					c=cs[i],
+					lw=1.5 if case == 'FD' else 1.0,
+					ls='-' if case == 'FD' else '--',
+					# label=label,
+					# zorder=0,
+					# label=gen_label(Delta_Neffs[i],z_NRs[i])
+				)
+			else:
+				plt.plot(
+					ell,
+					ell*(ell+1)*unlensed_cl/2/np.pi,
+					c=cs[i],
+					lw=1.5 if case == 'FD' else 1.0,
+					ls='-' if case == 'FD' else '--',
+					# label=label,		
+					# zorder=0,
+				)
+		
+	plt.legend(fontsize=12,loc='lower left', frameon=False)
+
 	return f_LiMRs
 
 def plot_evolution(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],head_dir='../data/cosmos/'):
@@ -1077,7 +1149,12 @@ def get_samples(g, roots=['FD_PR3_N_mnu=1_Mmnu=0.06']):
 			root,
 			settings=analysis_settings,
 			)
-		s.setRanges(mcmc_ranges)
+		if root[0:3] == 'zup':
+			mcmc_ranges_zup = mcmc_ranges.copy()
+			mcmc_ranges_zup['log10z_tr'] = [3, 6]
+			s.setRanges(mcmc_ranges_zup)
+		else:
+			s.setRanges(mcmc_ranges)
 
 		if root[0:3] == 'Tup':
 			Temp = 5
@@ -1129,3 +1206,31 @@ def get_samples(g, roots=['FD_PR3_N_mnu=1_Mmnu=0.06']):
 	# 		} for root in roots
 	# 	],
 	# )
+
+
+precision_params = {
+    'tol_ncdm_bg':1.e-10,
+    'thermo_Nz_lin':100000,
+    "tol_background_integration":1.e-3, 
+    "tol_perturbations_integration":1.e-6,
+    "perturbations_sampling_stepsize":0.01,
+    "l_logstep":1.026 ,
+    "l_linstep":25,
+    "perturbations_sampling_stepsize":0.04,
+    "delta_l_max":800,
+    "radiation_streaming_approximation":2,
+    "radiation_streaming_trigger_tau_over_tau_k":240.,
+    "radiation_streaming_trigger_tau_c_over_tau":100.,
+    "ur_fluid_approximation":2,
+    "ur_fluid_trigger_tau_over_tau_k":50.,
+
+    "ncdm_fluid_approximation":3,
+    "ncdm_fluid_trigger_tau_over_tau_k":51.,
+    "tol_ncdm_synchronous":1.e-10,
+    "tol_ncdm_newtonian":1.e-10,
+
+    "l_switch_limber":40.,
+    "accurate_lensing":1,
+    "num_mu_minus_lmax":1000.,
+    "delta_l_max":1000.,
+}

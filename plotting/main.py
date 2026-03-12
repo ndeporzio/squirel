@@ -59,65 +59,67 @@ def Hubble_changes(plot_dir='extra_plots/', figname='Hubble_changes.pdf'):
 	plt.savefig(plot_dir+figname)
 	log(f'Saving: {plot_dir + figname}')
 
-def vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
-	fig = plt.figure(figsize=(8, 4))
-	ax = plt.subplot(1, 1, 1)
+# def vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
+# 	fig = plt.figure(figsize=(8, 4))
+# 	ax = plt.subplot(1, 1, 1)
 
-	# Delta_Neffs = [0.1,0.1,0.1]
-	# Delta_Neffs = [0.1,0.05,0.02,0.06]
-	# z_NRs = np.ones(3)*1e4
-	# Delta_Neffs = np.linspace(0.1,0.02,5)
-	# Delta_Neffs = [0.06, 0.14, 0.28, 0.52, 0.87]
-	# z_NRs = [38602.36, 31059.37, 25982.36, 22331.94, 19580.91]
+# 	# Delta_Neffs = [0.1,0.1,0.1]
+# 	Delta_Neffs = [0.1,0.05,0.02,0.06]
+# 	z_NRs = np.ones(3)*1e4
+# 	# Delta_Neffs = np.linspace(0.1,0.02,5)
+# 	# Delta_Neffs = [0.06, 0.14, 0.28, 0.52, 0.87]
+# 	# z_NRs = [38602.36, 31059.37, 25982.36, 22331.94, 19580.91]
 
 
-	lensed = True
-	spectras = ['tt','ee']
-	# fixed1 = 'h'
-	fixed2 = 'omega_m'
-	fixed1 = 'theta_s100'
-	# fixed2 = 'a_eq'
-	for spectra in spectras:
-		plot_vs_LCDM_Cl(Delta_Neffs,z_NRs,N_mnu=1,M_mnu=0.06,lensed=lensed,spectra=spectra, fixed1=fixed1,fixed2=fixed2,head_dir='../data/cosmos/')
+# 	lensed = True
+# 	spectras = ['tt','ee']
+# 	# fixed1 = 'h'
+# 	fixed2 = 'omega_m'
+# 	fixed1 = 'theta_s100'
+# 	# fixed2 = 'a_eq'
+# 	for spectra in spectras:
+# 		plot_vs_LCDM_Cl(Delta_Neffs,z_NRs,N_mnu=1,M_mnu=0.06,lensed=lensed,spectra=spectra, fixed1=fixed1,fixed2=fixed2,head_dir='../data/cosmos/')
 
-		set_xy_scales(xscale='linear', yscale='linear')
+# 		set_xy_scales(xscale='linear', yscale='linear')
 
-		ax.set_xlabel(r"$\ell$", fontsize=14)
-		if spectra == 'tt':
-			ax.set_ylabel(r"$(C^{\rm TT}_\ell-C^{\rm TT}_\ell|_{\Lambda {\rm CDM}})/C^{\rm TT}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
-			set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
-		elif spectra == 'ee':
-			ax.set_ylabel(r"$(C^{\rm EE}_\ell-C^{\rm EE}_\ell|_{\Lambda {\rm CDM}})/C^{\rm EE}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
-			set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
-			plot_dir = 'extra_plots/'
+# 		ax.set_xlabel(r"$\ell$", fontsize=14)
+# 		if spectra == 'tt':
+# 			ax.set_ylabel(r"$(C^{\rm TT}_\ell-C^{\rm TT}_\ell|_{\Lambda {\rm CDM}})/C^{\rm TT}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
+# 			set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
+# 		elif spectra == 'ee':
+# 			ax.set_ylabel(r"$(C^{\rm EE}_\ell-C^{\rm EE}_\ell|_{\Lambda {\rm CDM}})/C^{\rm EE}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
+# 			set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
+# 			plot_dir = 'extra_plots/'
 
-		text = False
-		if text:
-			cs = IBM_cscheme()
-			for i, Delta_Neff in enumerate(Delta_Neffs):
-				ax.text(.5,8*Delta_Neff,r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+', z_{\mathrm{NR}}=10^{'+str(np.log10(z_NRs[i]))+'}$',fontsize=13,transform=ax.transAxes,color=cs[2*i%5])
+# 		text = False
+# 		if text:
+# 			cs = IBM_cscheme()
+# 			for i, Delta_Neff in enumerate(Delta_Neffs):
+# 				ax.text(.5,8*Delta_Neff,r'$\Delta N_{\mathrm{eff}}='+str(Delta_Neff)+', z_{\mathrm{NR}}=10^{'+str(np.log10(z_NRs[i]))+'}$',fontsize=13,transform=ax.transAxes,color=cs[2*i%5])
 
-		spectra_name = spectra + '_'
-		fixed_str = 'fixed='+fixed1+','+fixed2+'_'
-		figname2 = fixed_str + spectra_name +figname
-		save_fig(figname2, plot_dir)
+# 		spectra_name = spectra + '_'
+# 		fixed_str = 'fixed='+fixed1+','+fixed2+'_'
+# 		figname2 = fixed_str + spectra_name +figname
+# 		save_fig(figname2, plot_dir)
 
-		plt.cla() 
+# 		plt.cla() 
 
-def subplots_vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
+def subplots_vs_LCDM_residuals(plot_dir='plots/', figname='residuals_vs_LCDM.pdf',showpeaks=False,precisions=False):
 	Delta_Neffs = np.linspace(0.05,0.25,5)
 	# Delta_Neffs = np.linspace(0.04,0.20,5)
 	z_NRs = np.logspace(3,5,3)[0:2]
-	# z_NRs = np.logspace(3,5,5)[0:3]
+	z_NRs = np.logspace(3,5,5)[0:3]
 	# z_NRs = np.logspace(3,6,7)[0:6]
 	# Delta_Neffs = np.linspace(0.01,0.05,5)
 
 	fig = plt.figure(figsize=(10, 4))
 	# fig = plt.figure(figsize=(12, 4))
+	# precisions = True # warning: uncommenting this makes things very slow if running for the first time, ~1 hour
+	# showpeaks = True
 
 	lensed = True
 	spectras = ['tt']
-	# fixed1 = 'h'
+	fixed1 = 'h'
 	fixed2 = 'omega_m'
 	fixed1 = 'theta_s100'
 	fixed2 = 'a_eq'
@@ -130,7 +132,7 @@ def subplots_vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
 				viable_idx -= 1
 			fixed_zNRs = np.ones(len(Delta_Neffs))*z_NR
 
-			f_LiMRs = plot_vs_LCDM_Cl(Delta_Neffs[:viable_idx],fixed_zNRs[:viable_idx],N_mnu=1,M_mnu=0.06,lensed=lensed,spectra=spectra, fixed1=fixed1,fixed2=fixed2,head_dir='../data/cosmos/')
+			f_LiMRs = plot_vs_LCDM_residuals(Delta_Neffs[:viable_idx],fixed_zNRs[:viable_idx],N_mnu=1,M_mnu=0.06,lensed=lensed,spectra=spectra, fixed1=fixed1,fixed2=fixed2,head_dir='../data/cosmos/',precisions=precisions,showpeaks=showpeaks)
 			set_xy_scales(xscale='linear', yscale='linear')
 
 			ax.set_xlabel(r"$\ell$", fontsize=14)
@@ -176,6 +178,80 @@ def subplots_vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
 		log(f'Saving: {plot_dir + figname2}')
 
 		plt.cla() 
+
+# def subplots_vs_LCDM_Cl(plot_dir='plots/', figname='cosmos_vs_LCDM.pdf'):
+# 	Delta_Neffs = np.linspace(0.05,0.25,5)
+# 	# Delta_Neffs = np.linspace(0.04,0.20,5)
+# 	z_NRs = np.logspace(3,5,3)[0:2]
+# 	z_NRs = np.logspace(3,5,5)[0:3]
+# 	# z_NRs = np.logspace(3,6,7)[0:6]
+# 	# Delta_Neffs = np.linspace(0.01,0.05,5)
+
+# 	fig = plt.figure(figsize=(16, 8))
+# 	# fig = plt.figure(figsize=(12, 4))
+# 	precisions = True # warning: uncommenting this makes things very slow if running for the first time, ~1 hour
+
+# 	lensed = True
+# 	spectras = ['tt']
+# 	fixed1 = 'h'
+# 	fixed2 = 'omega_m'
+# 	fixed1 = 'theta_s100'
+# 	fixed2 = 'a_eq'
+# 	fixed_str = 'fixed='+fixed1+','+fixed2+'_'
+# 	for spectra in spectras:
+# 		for i, z_NR in enumerate(z_NRs):
+# 			ax = plt.subplot(1, len(z_NRs), i+1, sharex = ax if i > 0 else None, sharey = ax if i > 0 else None)
+# 			viable_idx = len(Delta_Neffs)
+# 			if z_NR == 1e5 and Delta_Neffs[-1] > 0.21:
+# 				viable_idx -= 1
+# 			fixed_zNRs = np.ones(len(Delta_Neffs))*z_NR
+
+# 			f_LiMRs = plot_vs_LCDM_Cl(Delta_Neffs[:viable_idx],fixed_zNRs[:viable_idx],N_mnu=1,M_mnu=0.06,lensed=lensed,spectra=spectra, fixed1=fixed1,fixed2=fixed2,head_dir='../data/cosmos/',precisions=precisions)
+# 			set_xy_scales(xscale='linear', yscale='linear')
+
+# 			ax.set_xlabel(r"$\ell$", fontsize=14)
+# 			if i == 0:
+# 				if spectra == 'tt':
+# 					ax.set_ylabel(r"$(C^{\rm TT}_\ell-C^{\rm TT}_\ell|_{\Lambda {\rm CDM}})/C^{\rm TT}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
+# 					# set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
+# 				elif spectra == 'ee':
+# 					ax.set_ylabel(r"$(C^{\rm EE}_\ell-C^{\rm EE}_\ell|_{\Lambda {\rm CDM}})/C^{\rm EE}_\ell|_{\Lambda {\rm CDM}}$", fontsize=14)
+# 					# set_xy_lims(xmin=2., xmax=2500, ymin=-0.05, ymax=0.05)
+# 					plot_dir = 'extra_plots/'
+# 			else:
+# 				ax.tick_params(labelleft=False)
+			
+# 			ax.text(0.5,0.9,r'$z_{\mathrm{NR}}=10^{'+str(round(np.log10(z_NRs[i]),2))+'}$',horizontalalignment='center',fontsize=14,transform=ax.transAxes,color='k')
+			
+# 			for i in range(len(f_LiMRs)):
+# 				if len(f_LiMRs) == 4:
+# 					ylocs = [0.15,0.15,0.05,0.05]
+# 					xlocs = [0.325,0.675,0.325,0.675]
+# 				elif len(f_LiMRs) == 5:
+# 					ylocs = [0.25,0.15,0.15,0.05,0.05]
+# 					xlocs = [0.325,0.325,0.675,0.325,0.675]
+# 				ax.text(xlocs[i],ylocs[i],r'$f_\chi='+f'{f_LiMRs[i]:.1}'+r'$',horizontalalignment='center',fontsize=14,transform=ax.transAxes,color=IBM_cscheme()[i])
+
+# 		fig.tight_layout(rect=[0, 0, 0.92, 1])
+# 		fig.subplots_adjust(wspace=0.0)
+		
+# 		cbar_ax = fig.add_axes([plt.gca().get_position().x1 + 0.02, plt.gca().get_position().y0, 0.02, plt.gca().get_position().height])
+# 		cmap = mpl.colors.ListedColormap(IBM_cscheme()[0:len(Delta_Neffs)])
+# 		spacing = (Delta_Neffs[-1]-Delta_Neffs[0])/(len(Delta_Neffs))
+# 		bounds = [Delta_Neffs[0]-spacing/2, Delta_Neffs[-1]+spacing/2]
+# 		norm = mpl.colors.Normalize(vmin=bounds[0], vmax=bounds[-1])
+# 		cb1 = mpl.colorbar.ColorbarBase(cbar_ax, cmap=cmap, norm=norm, orientation='vertical')
+# 		cb1.set_label(r'$\Delta N_{\mathrm{eff}}$', fontsize=14)
+# 		cb1.set_ticks(Delta_Neffs)
+
+# 		# fig.tight_layout()
+
+# 		spectra_name = spectra + '_'
+# 		figname2 = 'subplots_' + fixed_str + spectra_name +figname
+# 		plt.savefig(plot_dir+figname2)
+# 		log(f'Saving: {plot_dir + figname2}')
+
+# 		plt.cla() 
 
 def distribs_comparison(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],ins=True, plot_dir='plots/', figname='distribs_comparison.pdf'):
 
@@ -266,7 +342,7 @@ def chi_scaling(plot_dir='extra_plots/', figname='chi_scaling.pdf'):
 
 	save_fig(figname, plot_dir)
 
-def vs_LCDM_contours(plot_dir='plots/', figname='LCDM_vs_DR_vs_LiMR_triangle.pdf', chain_dir='/Users/davidimig/projects/squirel/data/chains'):
+def vs_LCDM_contours(plot_dir='plots/', figname='zup_LCDM_vs_DR_vs_LiMR_triangle.pdf', chain_dir='/Users/davidimig/projects/squirel/data/chains'):
 	
 	log('Generating comparison contours for LCDM vs DR vs FD LiMRs.')
 
@@ -283,9 +359,9 @@ def vs_LCDM_contours(plot_dir='plots/', figname='LCDM_vs_DR_vs_LiMR_triangle.pdf
     'delta_Neff',
     'log10z_tr',
 
-	'100theta_s',
-	'rs_rec',
-	'ra_rec',
+	# '100theta_s',
+	# 'rs_rec',
+	# 'ra_rec',
 
     # 'Omega_Lambda',
     'omega_m',
@@ -306,7 +382,7 @@ def vs_LCDM_contours(plot_dir='plots/', figname='LCDM_vs_DR_vs_LiMR_triangle.pdf
 		'LCDM', 
 		'DR', 
 		'FD',
-		# 'zup_FD',
+		'zup_FD',
 		]
 	
 	# cases = ['FD', 'logzNR4_FD', 'fixed_zNR_FD'][::-1]
@@ -321,7 +397,7 @@ def vs_LCDM_contours(plot_dir='plots/', figname='LCDM_vs_DR_vs_LiMR_triangle.pdf
 	g = plots.get_subplot_plotter(chain_dir=chain_dir)
 	samples = get_samples(g, roots=roots)
 	roots = [root.replace('fixed_zNR_FD','logzNR5_FD') for root in roots]
-	roots = [root.replace('zup_FD','FD') for root in roots]
+	roots = [root.replace('zup_FD','LN') for root in roots] # for coloring
 
 	g.triangle_plot(
 		samples, 
@@ -364,7 +440,7 @@ def LiMR_contours(plot_dir='plots/', figname='PR3_LiMR_triangle.pdf', chain_dir=
 
     'delta_Neff',
     'log10z_tr',
-	'sigma',
+	# 'sigma',
 	# 'log10omega0_ncdm1',
     ]
 	
@@ -372,8 +448,8 @@ def LiMR_contours(plot_dir='plots/', figname='PR3_LiMR_triangle.pdf', chain_dir=
 	nu_hierach = 'N_mnu=1_Mmnu=0.06'
 	cases = [
 		'FD',
-		'BE',
-		'LN',
+		# 'BE',
+		# 'LN',
 	]
 	roots = [case + '_' + probe + '_' + nu_hierach + '_' for case in cases]
 
@@ -840,7 +916,8 @@ if __name__ == '__main__':
 		cosmo_densities()
 	if gen_cls == 'y':
 		# vs_LCDM_Cl()
-		subplots_vs_LCDM_Cl()
+		subplots_vs_LCDM_residuals()
+		# subplots_vs_LCDM_Cl()
 	if Hubbles == 'y':
 		Hubble_changes()
 		

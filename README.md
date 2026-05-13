@@ -7,7 +7,7 @@ We provide our modifications to CLASS and MontePython to reproduce our results a
 - Set up SquiRelCLASS following the standard [CLASS](https://github.com/lesgourg/class_public) installation
 - Run the `main.py` script and specify which plots are desired when prompted
 - Depending on the desired plot, the code may run a number of CLASS instances
-- If contour plots are desired, a working [GetDist](https://getdist.readthedocs.io/en/latest/) is necessary, and one must download our MCMC chains from [our DropBox](https://www.dropbox.com/scl/fo/pljewqsxyg1hzwqugb7he/AGTLiscyh-99CvWGXB5EXw4?rlkey=arfsaa2620y4mg8gehgniz26h&st=hf8iie9h&dl=0)
+- To recreate our contour plots, a working [GetDist](https://getdist.readthedocs.io/en/latest/) is necessary, and one must download the MCMC chains from [our DropBox](https://www.dropbox.com/scl/fo/pljewqsxyg1hzwqugb7he/AGTLiscyh-99CvWGXB5EXw4?rlkey=arfsaa2620y4mg8gehgniz26h&st=hf8iie9h&dl=0)
 
 ## Contact
 Please email deporzio@bu.edu, dimig2@illinois.edu, or jshelton137@gmail.com for any questions.

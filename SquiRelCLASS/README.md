@@ -1,3 +1,8 @@
+# SquiRelCLASS
+This folder contains our modifications to [CLASS](https://github.com/lesgourg/class_public) to implement custom distribution relics (primary changes in `background.c`) and to more efficiently sample highly non-thermal momentum distributions (primary changes in `quadrature.c`). 
+
+The rest of the standard CLASS readme is below.
+
 CLASS: Cosmic Linear Anisotropy Solving System  {#mainpage}
 ==============================================
 

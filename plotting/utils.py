@@ -1,11 +1,22 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.ticker import ScalarFormatter
+import matplotlib.gridspec as gridspec
+from matplotlib.patches import Polygon
+from matplotlib.legend_handler import HandlerBase
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.special import zeta
 import matplotlib as mpl
 import scipy.integrate as integrate
 from scipy import constants
 from scipy import interpolate
+from scipy.interpolate import make_interp_spline, interp1d
 from scipy import signal
+from scipy.optimize import brentq, curve_fit
 from classy import Class
 from getdist import MCSamples, plots
 # modules for data I/O
@@ -284,7 +295,7 @@ def ncdm_qmax(case,N_mnu=1):
 		qmax = 15 # this will be overwritten with value from interpolation table for LN distribution, and q_min != 0 chosen as well
 	return ','.join([str(qmax) for x in range(N_mnu+1)])
 
-def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',save=True,precisions=False):	
+def run_CLASS_and_save(case='LCDM', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',save=True,precisions=True):	
 	"""Run CLASS for a given case and save outputs.
 
 	This function writes a pickle with CLASS outputs. Files are written under `head_dir+'/fixed={fixed1},{fixed2}/N_mnu={str(N_mnu)}_Mmnu={str(M_mnu)}/'`.
@@ -489,7 +500,7 @@ def get_horizon_crossing(ell=200):
 	H_array = LCDM_cosmo.get_background()['H [1/Mpc]']
 	z_array = LCDM_cosmo.get_background()['z']
 	a_array = 1/(1+z_array)
-	idx = np.where(a_array-k/H_array < 0)[0]
+	idx = np.where(a_array-k/H_array < 0)[0][0]
 	return idx, z_array[idx]
 
 def test_CLASS(case='FD', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/', save=False):
@@ -498,7 +509,7 @@ def test_CLASS(case='FD', Delta_Neff=0.3, z_NR=1e3, sigma=None, qc_dict=None, m_
 	log(f'Thus, if LiMR, omega_chi shoud be {omega_chi(Delta_Neff,z_NR)}')
 	output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma, qc_dict, m_dict, N_mnu, M_mnu, fixed1, fixed2, head_dir, save)
 
-def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/',precisions=False):
+def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_array=[0.04,1.5], qc_dict=None, m_dict=None, N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', head_dir='../data/cosmos/'):
 	""" Pickle output from CLASS for a set of cosmological cases.
 	Then create global variables for each case with the output data.
 	"""
@@ -517,7 +528,7 @@ def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_arra
 					output_data = pickle.load(f)
 					log(f'Loaded CLASS output for {case} from: {filename}')
 			else:
-				output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir, precisions=precisions)
+				output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 				log(f'Saved CLASS output for {case} to: {filename}')
 			globals()[f'cosmo_{root}'] = output_data
 		else:
@@ -529,7 +540,7 @@ def fill_cosmos(cases=['LCDM', 'DR', 'FD'], Delta_Neff=0.3, z_NR=1e3, sigma_arra
 						output_data = pickle.load(f)
 						log(f'Loaded CLASS output for {case} from: {filename}')
 				else:
-					output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma=sigma, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir, precisions=precisions)
+					output_data = run_CLASS_and_save(case, Delta_Neff, z_NR, sigma=sigma, qc_dict=qc_dict, m_dict=m_dict, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 					log(f'Saved CLASS output for {case} to: {filename}')
 				globals()[f'cosmo_{root}'] = output_data
 
@@ -548,23 +559,28 @@ def plot_distributions(ax,Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],ins=Fal
 	# Now plot LN sigma band 
 	c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
 	c1 = mpl.colors.to_rgb(cosmo_color('LNwide'))
+	curves = []
 	for i, sigma in enumerate(sigma_array[::-1]):
 		key = f'LN_{sigma:.3f}'
 
 		m_sigma = m_dict[key]
 		qc_sigma = qc_dict[key]
 		curve = m_sigma*(qc_sigma*T0CMB*K_to_eV)**3 * eV_to_cm**3 * g_dict['LN'] / (2 * np.pi**2) * f_LN(xi_array,sigma) * xi_array**3
+		curves.append(curve)
 		t = float((len(sigma_array) - 1) - i) / (len(sigma_array) - 1)
 		color = (c0[0] * (1 - t) + c1[0] * t,
 				 c0[1] * (1 - t) + c1[1] * t,
 				 c0[2] * (1 - t) + c1[2] * t)
-		if ins:
-			ax.plot(xi_array, curve, c=color, alpha=0.1*(.1+sigma)/1.6, lw=1.5) # necessary since otherwise sharp curves bunch up in linear yspace
-		else:
-			ax.plot(xi_array, curve, c=color, alpha=0.1, lw=1.5)
+		if i > 0:
+			ax.plot(xi_array, curve, c=color, alpha=0.05, lw=2, zorder=-10)
+			# ax.fill_between(xi_array, curves[i-1], curves[i], color=color, edgecolor="none", alpha=0.03)
 		# emphasize endpoints
 		if i == 0 or i == len(sigma_array)-1:
 			ax.plot(xi_array, curve, c=color, lw=1.5)
+		# elif round(sigma%0.3,3) ==0: # rounding necessary due to linspace precision
+		# 	ax.plot(xi_array, curve, c=color, lw=1, alpha=0.4, ls='-')
+		# elif round(sigma, 3) == 0.55:
+		# 	ax.plot(xi_array, curve, c='gray', lw=1, alpha=0.7, ls='-', zorder=-9)
 
 	# Now plot canonical distributions
 	for case in ['FD', 'BE', 'RD']:
@@ -583,7 +599,10 @@ def plot_distributions(ax,Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],ins=Fal
 	ymax = ymax / 0.5
 	ymax_rounded = round(ymax, -int(np.floor(np.log10(ymax))))	
 
-	
+	# lastly plot delta distribution
+	dirac_delta = False
+	if dirac_delta:
+		ax.vlines(1, 0, 1e3, colors='k', lw=1, alpha=0.7, zorder=0)
 	return ymax_rounded
 
 def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, head_dir='../data/cosmos/'):
@@ -696,7 +715,7 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 				)
 		a_NR = 1/(1+z_NRs[i])
 		# plt.axvline(a_NR, c=cs[2*i%5], ls='--', lw=1.0, alpha=0.7, zorder=0)
-	plt.legend(fontsize=12,loc='lower left', frameon=False)
+	plt.legend(fontsize=14,loc='lower left', frameon=False, handlelength=1.5)
 
 def plot_Hubbles(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='theta_s100', fixed2='omega_m', head_dir='../data/cosmos/'):
 	cs = IBM_cscheme()
@@ -724,14 +743,14 @@ def plot_Hubbles(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, 
 				ls='-' if species == 'LiMR' else '--',
 			)
 
-def plot_vs_LCDM_residuals(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/',precisions=False, showpeaks=False):
+def plot_vs_LCDM_residuals(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/', showpeaks=False):
 	"""
 	This function plots the Cl residuals w.r.t LCDM (with N_mnu massive neutrinos) for DR and FD LiMR cosmologies.
 	"""
 	cs = IBM_cscheme()
 	fixed_str = 'fixed='+fixed1+','+fixed2
 	# fill out arrays for cl values for plotting, using fill_cosmos
-	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 	root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
 	ell = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
 	lensed_cl_LCDM = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
@@ -740,7 +759,7 @@ def plot_vs_LCDM_residuals(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N
 	f_LiMRs = np.zeros(len(Delta_Neffs))
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		cases = ['FD']
-		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 		for case in cases:
 			if case == 'DR':
 				root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
@@ -809,14 +828,14 @@ def plot_vs_LCDM_residuals(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N
 		log(f'Added peaks at {peak_ells}')
 	return f_LiMRs
 
-def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/',precisions=False):
+def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 1, M_mnu = 0.06, fixed1='h', fixed2='omega_m', lensed=True, spectra='tt', head_dir='../data/cosmos/'):
 	"""
 	This function plots the Cls for DR and FD LiMR cosmologies.
 	"""
 	cs = IBM_cscheme()
 	fixed_str = 'fixed='+fixed1+','+fixed2
 	# fill out arrays for cl values for plotting, using fill_cosmos
-	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+	fill_cosmos(cases=['LCDM'], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 	root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
 	ell = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
 	lensed_cl_LCDM = globals()[f'cosmo_{root}']['lensed_cls'][spectra][2:]
@@ -825,7 +844,7 @@ def plot_vs_LCDM_Cl(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_mnu = 
 	f_LiMRs = np.zeros(len(Delta_Neffs))
 	for i, Delta_Neff in enumerate(Delta_Neffs):
 		cases = ['FD']
-		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir,precisions=precisions)
+		fill_cosmos(cases=cases, Delta_Neff=Delta_Neff, z_NR=z_NRs[i], N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 		for case in cases:
 			if case == 'DR':
 				root = head_dir+fixed_str+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
@@ -888,39 +907,81 @@ def plot_evolution(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],head_dir='../d
 				rho_LiMR_asympt =(1+z_array)**3*asympt_scaling(1/(1+z_array),Delta_Neff,z_NR)*rho_LiMR[-1]
 				# rho_LiMR_asympt = rho_LiMR #in case I want to see result wrt FD
 
-			plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,label=f'{case} LiMR',ls='-', lw=1.5, c=cosmo_color(case))	
+			plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,ls='-', lw=1.5, c=cosmo_color(case))	
 		else:
 			c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
 			c1 = mpl.colors.to_rgb(cosmo_color('LNwide'))
+			rho_LiMRs = []
 			for i, sigma in enumerate(sigma_array):
 				root = head_dir+'fixed=h,omega_m/N_mnu=1_Mmnu=0.06/'+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_sigma='+str(sigma)
 				rho_LiMR = globals()[f'cosmo_{root}']['background']['(.)rho_ncdm[0]']
+				rho_LiMRs.append(rho_LiMR)
 				# plot same ratios as above, but with color coding for sigma as in plot_distributions
 
 				t = float(i) / (len(sigma_array) - 1)
 				color = (c0[0] * (1 - t) + c1[0] * t,
 						 c0[1] * (1 - t) + c1[1] * t,
 						 c0[2] * (1 - t) + c1[2] * t)
-				plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,ls='-',c=color, alpha=0.1, lw=1.5,zorder=0)
+				if i > 0:
+					plt.fill_between(z_array, rho_LiMRs[i-1]/rho_LiMR_asympt, rho_LiMRs[i]/rho_LiMR_asympt, color=color, edgecolor="none", alpha=0.3)
 				if i == 0 or i == len(sigma_array)-1:
-					plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,ls='-',c=color, lw=1.5)	
+					plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,ls='-',c=color, lw=1.5)
+				# elif round(sigma,3)%0.3 < 1e-5: # rounding necessary due to linspace precision
+				# 	plt.semilogx(z_array,rho_LiMR/rho_LiMR_asympt,ls='-',c=color, lw=1, alpha=0.5)	
 				
+	# plot would be evolution of delta distributed relics
+	dirac_delta = True
+	if dirac_delta:
+		a_NR = 1/(1+z_NR)
+		def rho_dd(a,a_NR):
+			return a**(-4)*np.sqrt(1+(a/a_NR)**2)*a_NR*rho_LiMR_asympt[-1]
+		rho_dd_array = np.asarray([rho_dd(a,a_NR) for a in a_array])
+		plt.fill_between(
+			z_array, 
+			np.ones(len(z_array)), 
+			rho_dd_array/rho_LiMR_asympt, 
+			color='gray', 
+			facecolor='white', 
+			hatch='/', 
+			alpha=0.5, 
+			zorder=0, 
+			# label=r'$\rho_\chi<\rho_\mathrm{min}$',
+			)
+		#this one just for beautifying label
+		plt.fill_between(
+			z_array, 
+			-1*np.ones(len(z_array)), 
+			np.zeros(len(z_array)), 
+			color='gray', 
+			facecolor='white', 
+			hatch='//', 
+			alpha=0.5, 
+			zorder=0, 
+			label=r'$\rho_\chi<\rho_\mathrm{min}$',
+			)
+		# plt.semilogx(z_array,rho_dd_array/rho_LiMR_asympt,ls='-',c='k', lw=2, alpha=0.7, zorder=0)
 
 	# now add vertical line at z_NR
-	plt.axvline(z_NR, c='gray', ls='-', lw=1.0, alpha=0.7)	
+	plt.axvline(z_NR, c='k', ls='--', lw=1.0, alpha=1, zorder=0)	
+		
 
-def plot_distrib_cls(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],denom='FD',lensed=True,head_dir='../data/cosmos/',fixed1='h',fixed2='omega_m',N_mnu=1,M_mnu=0.06):
+def plot_distrib_cls(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],denom='FD',lensed=True,head_dir='../data/cosmos/',fixed1='theta_s100',fixed2='a_eq',N_mnu=1,M_mnu=0.06):
 	""" This function plots the residuals for the LiMR cosmologies w.r.t. either FD or DR
 	"""
-	# denom = 'BE'
-	cases=['DR',denom,'FD','BE','RD','LN'] # add denom in case I want to plot in different order
+	denom = 'FD'
+	cases=[denom,'FD','BE','RD','LN'] # add denom in case I want to plot in different order
 	ell = {}
 	lensed_clTT = {}
 	unlensed_clTT = {}
 	
 	fill_cosmos(cases=cases, Delta_Neff=Delta_Neff,z_NR=z_NR,sigma_array=sigma_array, N_mnu=N_mnu, M_mnu=M_mnu, fixed1=fixed1, fixed2=fixed2, head_dir=head_dir)
 	for case in cases:
-		if case == 'DR':
+		if case == 'LCDM':
+			root = head_dir+'fixed='+fixed1+','+fixed2+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/LCDM'
+			ell[case] = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
+			lensed_clTT[case] = globals()[f'cosmo_{root}']['lensed_cls']['tt'][2:]
+			unlensed_clTT[case] = globals()[f'cosmo_{root}']['unlensed_cls']['tt'][2:2501]
+		elif case == 'DR':
 			root = head_dir+'fixed='+fixed1+','+fixed2+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/DR_DNeff='+str(Delta_Neff)
 			ell[case] = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
 			lensed_clTT[case] = globals()[f'cosmo_{root}']['lensed_cls']['tt'][2:]
@@ -949,34 +1010,54 @@ def plot_distrib_cls(Delta_Neff=0.3,z_NR=1e3,sigma_array=[0.04,1.5],denom='FD',l
 		else:
 			c0 = mpl.colors.to_rgb(cosmo_color('LNsharp'))
 			c1 = mpl.colors.to_rgb(cosmo_color('LNwide'))
+			lensed_clTTs = []
 			for i, sigma in enumerate(sigma_array):
 				root = head_dir+'fixed='+fixed1+','+fixed2+'/N_mnu='+str(N_mnu)+'_Mmnu='+str(M_mnu)+'/'+case+'_DNeff='+str(Delta_Neff)+'_zNR='+str(z_NR)+'_sigma='+str(sigma)
 				ell[case] = globals()[f'cosmo_{root}']['lensed_cls']['ell'][2:]
 				lensed_clTT[case] = globals()[f'cosmo_{root}']['lensed_cls']['tt'][2:]
-				unlensed_clTT[case] = globals()[f'cosmo_{root}']['unlensed_cls']['tt'][2:2501]
+				lensed_clTTs.append(lensed_clTT[case])
 
 				t = float(i) / (len(sigma_array) - 1)
 				color = (c0[0] * (1 - t) + c1[0] * t,
 						 c0[1] * (1 - t) + c1[1] * t,
 						 c0[2] * (1 - t) + c1[2] * t)
-				if lensed:
+				if i > 0:
+					plt.fill_between(
+						ell[case],
+						(lensed_clTTs[i]-lensed_clTT[denom])/lensed_clTT[denom],
+						(lensed_clTTs[i-1]-lensed_clTT[denom])/lensed_clTT[denom],
+						color=color,
+						edgecolor="none",
+						alpha=0.15,
+						zorder=0,
+					)
+				if i == 0 or i == len(sigma_array)-1:
 					plt.plot(
 						ell[case],
 						(lensed_clTT[case]-lensed_clTT[denom])/lensed_clTT[denom],
 						c=color,
 						lw = 1.5,
-						alpha= 1 if i == 0 or i == len(sigma_array)-1 else 0.1,
-						zorder=0
+						alpha= 1,
+						zorder=0,
 					)
-				else:
-					plt.plot(
-						ell[case],
-						(unlensed_clTT[case]-unlensed_clTT[denom])/unlensed_clTT[denom],
-						c=color,
-						lw = 1.5,
-						alpha= 1 if i == 0 or i == len(sigma_array)-1 else 0.1,
-						zorder=0
-					)
+	
+	errbars = True
+	if errbars:
+		# lastly add Planck 2018 error bars from /data/Planck_errbars.txt
+		errbars_f = "../data/Planck_errbars.txt"
+		data = np.loadtxt(
+			errbars_f,
+			delimiter=",",
+			comments="#",
+			skiprows=3,
+			usecols=(2, 4, 5, 6)
+		)
+
+		planck_ell     = data[:, 0]
+		planck_dl_tt   = data[:, 1]/muK2 
+		sigma_minus    = data[:, 2]/muK2
+		sigma_plus     = data[:, 3]/muK2
+		plt.fill_between(planck_ell, -sigma_minus/planck_dl_tt, sigma_plus/planck_dl_tt, color='gray', alpha=0.2, zorder=-1)
 
 
 
@@ -1022,23 +1103,23 @@ def set_xy_scales(xscale='linear', yscale='log'):
 	plt.xscale(xscale)
 	plt.yscale(yscale)
 
-def cosmo_color(case='LCDM'):
-	colors_dict = {
-        'FD': '#dc267f',
-        'BE': '#785ef0',
-        'RD': '#648fff',
-        'LNwide': '#ffb000',
-		'LNsharp': '#fe6100',
-		'LN': '#ffb000',
-		
-		'LCDM': '#fe6100',
-		'DR': '#648fff',
-
-		'logzNR5': '#785ef0',
-		'logzNR4': '#ffb000',
-        # '??': '#fe6100',
-    }
+colors_dict = {
+	'FD': '#dc267f',
+	'BE': '#785ef0',
+	'RD': '#648fff',
+	'LNwide': '#ffb000',
+	'LNsharp': '#fe6100',
+	'LN': '#ffb000',
 	
+	'LCDM': '#fe6100',
+	'DR': '#648fff',
+
+	'logzNR5': '#785ef0',
+	'logzNR4': '#ffb000',
+	# '??': '#fe6100',
+}
+
+def cosmo_color(case='LCDM'):
 	try:
 		return colors_dict[case]
 	except:
@@ -1054,7 +1135,8 @@ def name_fig(figname, plot_dir='../plots/'):
 	i = 0
 	while os.path.exists(plot_dir + figname.replace('.pdf', f'_{i}.pdf')):
 		i += 1
-	figname = figname.replace('.pdf', f'_{i}.pdf')
+	# figname = figname.replace('.pdf', f'_{i}.pdf')
+	figname = figname.replace('.pdf', f'_0.pdf')
 	return figname
 
 def save_fig(figname, plot_dir='../plots/'):
@@ -1113,7 +1195,8 @@ mcmc_plot_lims = {
 }
 
 TeX_labels = {
-    'H0' : r'H_0',
+    # 'H0' : r'H_0\; {\rm [km\,s^{-1}\,Mpc^{-1}]}',
+	'H0' : r'H_0',
     'ln10^{10}A_s' : r'\log\left(10^{10}A_s\right)',
     'n_s' : r'n_s',
     'omega_b' : r'10^2\Omega_\mathrm{b} h^2',
@@ -1184,53 +1267,218 @@ def get_samples(g, roots=['FD_PR3_N_mnu=1_Mmnu=0.06']):
 	
 	return samples
 
-	# g.triangle_plot(
-	# 	samples, 
-	# 	params, 
-	# 	filled=True,
-	# 	param_limits=mcmc_plot_lims,
-	# 	contour_args = [
-	# 		{
-	# 			# 'alpha':1,
-	# 			'alpha':np.linspace(1,0.1,10)[i],
-	# 			'color': cosmo_color(root),
-	# 			'lw': 2,
-	# 		} for i, root in enumerate(roots)
-	# 	],
-	# 	line_args = [
-	# 		{
-	# 			'alpha': 1,
-	# 			'zorder': -1,
-	# 			'color': cosmo_color(root),
-	# 			'lw': 1,
-	# 		} for root in roots
-	# 	],
-	# )
-
 
 precision_params = {
-    'tol_ncdm_bg':1.e-10,
-    'thermo_Nz_lin':100000,
-    "tol_background_integration":1.e-3, 
-    "tol_perturbations_integration":1.e-6,
-    "perturbations_sampling_stepsize":0.01,
+    # 'tol_ncdm_bg':1.e-10,
+    # 'thermo_Nz_lin':100000,
+    # "tol_background_integration":1.e-3, 
+    # "tol_perturbations_integration":1.e-6,
+    # "perturbations_sampling_stepsize":0.01,
     "l_logstep":1.026 ,
     "l_linstep":25,
-    "perturbations_sampling_stepsize":0.04,
-    "delta_l_max":800,
-    "radiation_streaming_approximation":2,
-    "radiation_streaming_trigger_tau_over_tau_k":240.,
-    "radiation_streaming_trigger_tau_c_over_tau":100.,
-    "ur_fluid_approximation":2,
-    "ur_fluid_trigger_tau_over_tau_k":50.,
+    # "perturbations_sampling_stepsize":0.04,
+    # "delta_l_max":800,
+    # "radiation_streaming_approximation":2,
+    # "radiation_streaming_trigger_tau_over_tau_k":240.,
+    # "radiation_streaming_trigger_tau_c_over_tau":100.,
+    # "ur_fluid_approximation":2,
+    # "ur_fluid_trigger_tau_over_tau_k":50.,
 
-    "ncdm_fluid_approximation":3,
-    "ncdm_fluid_trigger_tau_over_tau_k":51.,
-    "tol_ncdm_synchronous":1.e-10,
-    "tol_ncdm_newtonian":1.e-10,
+    # "ncdm_fluid_approximation":3,
+    # "ncdm_fluid_trigger_tau_over_tau_k":51.,
+    # "tol_ncdm_synchronous":1.e-10,
+    # "tol_ncdm_newtonian":1.e-10,
 
-    "l_switch_limber":40.,
-    "accurate_lensing":1,
-    "num_mu_minus_lmax":1000.,
-    "delta_l_max":1000.,
+    # "l_switch_limber":40.,
+    # "accurate_lensing":1,
+    # "num_mu_minus_lmax":1000.,
+    # "delta_l_max":1000.,
 }
+
+def get_profs(chains_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+	"""Load profile likelihoods and labels for the PR3 chains."""
+	roots = {
+		'DR': 'DR',
+		'FD_logzNR30': 'logzNR3_FD',
+		'FD_logzNR35': 'logzNR35_FD',
+		'FD_logzNR40': 'logzNR4_FD',
+		'FD_logzNR45': 'logzNR45_FD',
+		'FD_logzNR50': 'fixed_zNR_FD',
+	}
+
+	param = 'delta_Neff'
+	profiles = {}
+	prof_dicts = {}
+	prof_labels = {}
+	for key, root in roots.items():
+		profiles[key] = lkl_prof(f'{chains_dir}/PR3/N_mnu=1_Mmnu=0.06/{root}_PR3_N_mnu=1_Mmnu=0.06', param)
+		prof_dicts[key] = profiles[key].full_lkl_prof_dict()
+		if key == 'DR':
+			prof_labels[key] = r'$\rm DR$'
+		else:
+			prof_labels[key] = r'$\rm FD\; (z_{\rm NR} = 10^{' + str(float(key[-2:]) / 10) + '})$'
+
+	return profiles, prof_dicts, prof_labels
+
+
+def _profile_ychi2_and_param_array(prof_dict, param='delta_Neff'):
+	ychi2 = np.array(prof_dict['-logLike'])
+	ychi2 = 2 * (ychi2 - ychi2.min())
+	param_values = np.array(prof_dict[param])
+	return ychi2, param_values
+
+
+def analyze_profile_parabolas(prof_dicts, param='delta_Neff', full_param_values=None, offset=False):
+	"""Fit parabolas to profile likelihoods and prepare plot-ready arrays."""
+	if full_param_values is None:
+		full_param_values = np.linspace(-0.5, 0.5, 1000)
+
+	def parabola(x, a, b, c):
+		return a * x**2 + b * x + c
+
+	fit_params = {}
+	parabs = {}
+	param_mins = {}
+	y_offsets = {}
+	ychi2s = {}
+	param_vals = {}
+
+	for key, prof_dict in prof_dicts.items():
+		ychi2, param_values = _profile_ychi2_and_param_array(prof_dict, param)
+		fit_params[key], pcov = curve_fit(parabola, param_values, ychi2)
+		parabs[key] = parabola(full_param_values, *fit_params[key])
+		y_offsets[key] = np.min(parabs[key]) if offset else 0
+
+		if key == 'DR':
+			ychi2s[key] = ychi2[::2]
+			param_vals[key] = param_values[::2]
+		else:
+			ychi2s[key] = ychi2
+			param_vals[key] = param_values
+
+		param_mins[key] = full_param_values[np.argmin(parabs[key])]
+
+	return {
+		'fit_params': fit_params,
+		'parabs': parabs,
+		'param_mins': param_mins,
+		'y_offsets': y_offsets,
+		'ychi2s': ychi2s,
+		'param_vals': param_vals,
+		'full_param_values': full_param_values,
+		'parabola': parabola,
+	}
+
+
+def compute_fc_boundaries(profile_analysis, bounds_file='../data/tabulated_bounds.txt'):
+	"""Compute the 95% CL correction from tabulated profile bounds."""
+	fit_params = profile_analysis['fit_params']
+	param_mins = profile_analysis['param_mins']
+	y_offsets = profile_analysis['y_offsets']
+	parabola = profile_analysis['parabola']
+
+	mus = np.loadtxt(bounds_file, usecols=(0,), skiprows=2, unpack=True)
+	CL2s = np.loadtxt(bounds_file, usecols=(2,), skiprows=2, unpack=True)
+	mus = np.concatenate((mus[:-1], np.linspace(max(mus), 100 * max(mus), 1000)))
+	CL2s = np.concatenate((CL2s[:-1], np.ones(1000) * max(CL2s)))
+
+	sig1s = {}
+	CL2_interp = {}
+	CL95s = {}
+
+	for key in fit_params:
+		sig1 = abs(param_mins[key] - brentq(
+			lambda x: parabola(x, *fit_params[key]) - y_offsets[key] - 1,
+			param_mins[key],
+			max(profile_analysis['full_param_values'])
+		))
+		sig1s[key] = sig1
+		CL2_interp[key] = make_interp_spline(mus * sig1, CL2s)
+		CL95s[key] = brentq(
+			lambda x: CL2_interp[key](x) - parabola(x, *fit_params[key]),
+			0,
+			max(mus) * sig1,
+		)
+
+	return {
+		'sig1s': sig1s,
+		'mus': mus,
+		'CL2_interp': CL2_interp,
+		'CL95s': CL95s,
+	}
+
+
+def plot_extrap_profs(ymin, chains_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+	profiles, prof_dicts, prof_labels = get_profs(chains_dir)
+	analysis = analyze_profile_parabolas(prof_dicts)
+
+	for i, key in enumerate(prof_dicts):
+		color = 'k' if key == 'DR' else colors_dict[list(colors_dict.keys())[i - 1]]
+		plt.plot(
+			analysis['full_param_values'],
+			analysis['parabs'][key] - analysis['y_offsets'][key],
+			ls='-',
+			color=color,
+			alpha=1,
+			label=prof_labels[key],
+		)
+		plt.scatter(
+			analysis['param_vals'][key],
+			analysis['ychi2s'][key] - analysis['y_offsets'][key],
+			color=color,
+			s=30,
+			marker='d',
+		)
+
+	# plt.legend(fontsize=14, loc='upper left', edgecolor='white', frameon=True, handlelength=1.5)
+	plt.fill_between(
+		[min(analysis['full_param_values']), 0],
+		min([ymin, min(min(analysis['parabs'][key]) for key in prof_dicts)]),
+		max(max(analysis['parabs'][key]) for key in prof_dicts),
+		color='gray',
+		facecolor='white',
+		hatch='/',
+		alpha=0.5,
+		zorder=-1,
+	)
+
+
+def plot_fc_corrected(chains_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+	profiles, prof_dicts, prof_labels = get_profs(chains_dir)
+	analysis = analyze_profile_parabolas(prof_dicts)
+	corrections = compute_fc_boundaries(analysis)
+
+	for i, key in enumerate(prof_dicts):
+		color = 'k' if key == 'DR' else colors_dict[list(colors_dict.keys())[i - 1]]
+		plt.plot(analysis['full_param_values'], analysis['parabs'][key], color=color)
+		plt.scatter(analysis['param_vals'][key], analysis['ychi2s'][key], color=color, s=30, marker='d')
+		plt.plot(
+			corrections['mus'] * corrections['sig1s'][key],
+			corrections['CL2_interp'][key](corrections['mus'] * corrections['sig1s'][key]),
+			color=color,
+			ls=':',
+			zorder=-1,
+		)
+		print(f"Boundary corrected 95% CL at {corrections['CL95s'][key]:.4f} for {key}")
+
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.image import BboxImage
+from matplotlib.transforms import Bbox, TransformedBbox
+
+class HandlerColorbar(HandlerBase):
+    def __init__(self, cmap, **kwargs):
+        self.cmap = cmap
+        super().__init__(**kwargs)
+
+    def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
+        colors = self.cmap.colors
+        n = len(colors)
+        patches = []
+        for i, color in enumerate(colors):
+            rect = mpl.patches.Rectangle(
+                (xdescent + i * width/n, ydescent),
+                width/n, height,
+                facecolor=color, edgecolor='none', transform=trans
+            )
+            patches.append(rect)
+        return patches

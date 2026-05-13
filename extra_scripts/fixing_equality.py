@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/davidimig/projects/squirel/plotting')
+sys.path.append('/path/to/squirel/plotting')
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt

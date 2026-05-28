@@ -1,4 +1,4 @@
-# SquiRel - Squishable Distribution Relics
+# SquiRel - Squished Relics
 **Authors:** Nick Deporzio, David Imig, Jessie Shelton
 
 We provide our modifications to CLASS and MontePython to reproduce our results and plots of the SquiRel paper, and detail our custom power-law sampling algorithm for handling logarithmic distributions. 

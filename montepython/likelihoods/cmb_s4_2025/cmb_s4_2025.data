@@ -36,15 +36,15 @@ cmb_s4_2025.sigma_T = [1.0]
 cmb_s4_2025.sigma_P = [1.41]
 
 # Do you want to include Bmodes (Gaussian approximation)?
-cmb_s4_2025.Bmodes = False
-cmb_s4_2025.delensing = False
+cmb_s4_2025.Bmodes = False # we don't care about bmodes
+cmb_s4_2025.delensing = False # so therefore don't delens to get primordial bmodes 
 # minimum variance estimator noise file by D.C. Hooper and T. Brinckmann
 cmb_s4_2025.delensing_file = 'noise_cmb_s4.dat'
 
 # Do you want to include lensing extraction?
-cmb_s4_2025.LensingExtraction = True
-cmb_s4_2025.neglect_TD = True
-cmb_s4_2025.unlensed_clTTTEEE = False
+cmb_s4_2025.LensingExtraction = True # need this to to print pp column
+cmb_s4_2025.neglect_TD = True # correction from TD correlation – hotter regions would have less lensing.
+cmb_s4_2025.unlensed_clTTTEEE = False # print TT TE EE values before (True) or after (False) lensing corrections
 cmb_s4_2025.ExcludeTTTEEE = False
 
 # Noise spectrum from Brinckmann, Hooper et al. 1808.05955

@@ -1,0 +1,47 @@
+# This likelihood is based on the CMB-S4 likelihood from Brinckmann, Hooper et al. 1808.05955, 
+# But using the SO baseline sensitivities, and the baseline noise curves from  arxiv:1808.07455 (https://github.com/simonsobs/so_noise_models)
+# And with with updated fiducial file for max likelihood point of DNeff=0.1, zNR=10^4 under PR3
+
+# Experimental configuration based on SO science book (2503.00636)
+# But implemented as in (2007.04325, LAT), with only one effective channel. See also 2108.02747.
+
+# Where to read/write fiducial model
+SO_logzNR4FD.data_directory     = data.path['data']
+SO_logzNR4FD.fiducial_file      = 'SO_logzNR4FD_fiducial.dat'
+
+# Experimental sensitivity
+# we stop at lmax=3000 to avoid foregrounds in T, and since noise overcomes E mode by then (1808.07445 Fig 5)
+# l_max_TT = 3000, l_max_EE = 3000, l_max_pp = 3000
+# i.e. no highl polarisation from kSZ or highl lensing
+SO_logzNR4FD.l_min              = 30
+SO_logzNR4FD.l_max              = 3000
+SO_logzNR4FD.f_sky              = 0.40
+SO_logzNR4FD.num_channels       = 1
+
+# Angular resolution
+# theta_fwhm must be in in arcmin
+# possible channels GHz [30, 40, 85, 95, 145, 155, 215, 270]
+# single channel forecast setup, 150 GHz
+SO_logzNR4FD.theta_fwhm = [1.4]
+
+# Resolution for Temperature and Polarisation
+# sigma's must be in muK.arcmin
+# Values from 2108.02747
+SO_logzNR4FD.sigma_T = [6.6]
+SO_logzNR4FD.sigma_P = [8.49]
+
+# Do you want to include Bmodes (Gaussian approximation)?
+SO_logzNR4FD.Bmodes = False
+SO_logzNR4FD.delensing = False
+# minimum variance estimator noise file by D.C. Hooper and T. Brinckmann
+SO_logzNR4FD.delensing_file = 'noise_SO.dat'
+
+# Do you want to include lensing extraction?
+SO_logzNR4FD.LensingExtraction = True
+SO_logzNR4FD.neglect_TD = True
+SO_logzNR4FD.unlensed_clTTTEEE = False
+SO_logzNR4FD.ExcludeTTTEEE = False
+
+# Noise spectrum based on Brinckmann, Hooper et al. 1808.05955, but noise values from https://github.com/simonsobs/so_noise_models
+SO_logzNR4FD.temporary_Nldd_file = 'noise_SO.dat'
+

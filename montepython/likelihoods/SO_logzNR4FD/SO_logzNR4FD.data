@@ -26,8 +26,8 @@ SO_logzNR4FD.theta_fwhm = [1.4]
 
 # Resolution for Temperature and Polarisation
 # sigma's must be in muK.arcmin
-# Values from 2108.02747
-SO_logzNR4FD.sigma_T = [6.6]
+# Values from 2108.02747, see https://github.com/misharash/cobaya_mock_cmb/blob/main/cobaya_mock_cmb/mock_SO/MockSO.yaml
+SO_logzNR4FD.sigma_T = [6.0]
 SO_logzNR4FD.sigma_P = [8.49]
 
 # Do you want to include Bmodes (Gaussian approximation)?

@@ -3,6 +3,7 @@
 #   EE source: SO_LAT_Nell_P_baseline_fsky0p4_ILC_CMB_E.txt
 #   nlkk source: nlkk_v3_1_0_deproj0_SENS1_fsky0p4_it_lT30-3000_lP30-5000.dat
 #   missing noise replaced with large values 
+#   See https://github.com/brinckmann/montepython_public/issues/167#issuecomment-778309449 for explanation of columns
     2    1.00000E+06    1.00000E+06    3.30014E-08    1.09140E+03    2.95350E+00    3.60680E-02    4.22550E-09    3.37090E-10    4.00000E-01
     3    1.00000E+06    1.00000E+06    3.02197E-08    5.17120E+02    1.69140E+00    2.45350E-02    1.84540E-09    1.41950E-10    4.00000E-01
     4    1.00000E+06    1.00000E+06    2.92375E-08    2.93730E+02    9.66520E-01    1.35880E-02    1.05450E-09    7.56710E-11    4.00000E-01

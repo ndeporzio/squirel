@@ -610,7 +610,11 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 	This function plots the bg energy density evolution for LCDM (with N_mnu massive neutrinos) and for possibly multiple FD LiMR cosmologies.
 	It assumes H0 is fixed to 67.81 km/s/Mpc
 	"""
-	cs = IBM_cscheme()
+	cs = [
+		IBM_cscheme()[3],
+		IBM_cscheme()[2],
+		IBM_cscheme()[0],
+	]
 	
 	# fill out arrays for background values for plotting, using fill_cosmos
 	for i, Delta_Neff in enumerate(Delta_Neffs):
@@ -689,7 +693,7 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 				plt.loglog(
 					a_array,
 					Omega_i,
-					c = cs[2*i%5],
+					c = cs[i],
 					lw=2.0,
 					ls='-',
 					# zorder=0,
@@ -699,7 +703,7 @@ def plot_cosmo_densities(Delta_Neffs=[0.3,0.094,0.02], z_NRs =[1e3,1e4,1e5], N_m
 				plt.loglog(
 					a_array,
 					Omega_i,
-					c = cs[2*i%5],
+					c = cs[i],
 					lw=1.5,
 					ls='--',
 					# zorder=0,
@@ -1080,11 +1084,11 @@ def plot_scaling(Delta_Neff=0.3,z_NR=1e3,case='FD',sigma=None):
 # Plotting visual settings
 def IBM_cscheme():
 	return [
-		'#dc267f',
-		'#785ef0',
 		'#648fff',
-		'#ffb000',
+		'#785ef0',
+		'#dc267f',
 		'#fe6100',
+		'#ffb000',
 	]
 
 def gen_label(Delta_Neff,z_NR):
@@ -1109,7 +1113,7 @@ colors_dict = {
 	'RD': '#648fff',
 	'LNwide': '#ffb000',
 	'LNsharp': '#fe6100',
-	'LN': '#ffb000',
+	'LN': '#648fff',
 	
 	'LCDM': '#fe6100',
 	'DR': '#648fff',
@@ -1385,6 +1389,7 @@ def compute_fc_boundaries(profile_analysis, bounds_file='../data/tabulated_bound
 	sig1s = {}
 	CL2_interp = {}
 	CL95s = {}
+	uncorrected_CL95s = {}
 
 	for key in fit_params:
 		sig1 = abs(param_mins[key] - brentq(
@@ -1399,12 +1404,18 @@ def compute_fc_boundaries(profile_analysis, bounds_file='../data/tabulated_bound
 			0,
 			max(mus) * sig1,
 		)
+		uncorrected_CL95s[key] = brentq(
+			lambda x: 4 - parabola(x, *fit_params[key]),
+			0,
+			max(mus) * sig1,
+		)
 
 	return {
 		'sig1s': sig1s,
 		'mus': mus,
 		'CL2_interp': CL2_interp,
 		'CL95s': CL95s,
+		'uncorrected_CL95s': uncorrected_CL95s,
 	}
 
 
@@ -1413,7 +1424,7 @@ def plot_extrap_profs(ymin, chains_dir=os.path.join(os.path.dirname(os.path.absp
 	analysis = analyze_profile_parabolas(prof_dicts)
 
 	for i, key in enumerate(prof_dicts):
-		color = 'k' if key == 'DR' else colors_dict[list(colors_dict.keys())[i - 1]]
+		color = 'k' if key == 'DR' else IBM_cscheme()[i-1]
 		plt.plot(
 			analysis['full_param_values'],
 			analysis['parabs'][key] - analysis['y_offsets'][key],
@@ -1449,7 +1460,7 @@ def plot_fc_corrected(chains_dir=os.path.join(os.path.dirname(os.path.abspath(__
 	corrections = compute_fc_boundaries(analysis)
 
 	for i, key in enumerate(prof_dicts):
-		color = 'k' if key == 'DR' else colors_dict[list(colors_dict.keys())[i - 1]]
+		color = 'k' if key == 'DR' else IBM_cscheme()[i-1]
 		plt.plot(analysis['full_param_values'], analysis['parabs'][key], color=color)
 		plt.scatter(analysis['param_vals'][key], analysis['ychi2s'][key], color=color, s=30, marker='d')
 		plt.plot(
@@ -1459,7 +1470,10 @@ def plot_fc_corrected(chains_dir=os.path.join(os.path.dirname(os.path.abspath(__
 			ls=':',
 			zorder=-1,
 		)
+		print(f"Uncorrected 95% CL at {corrections['uncorrected_CL95s'][key]:.4f} for {key}")
 		print(f"Boundary corrected 95% CL at {corrections['CL95s'][key]:.4f} for {key}")
+		print(f"Percent correction: {(corrections['CL95s'][key]-corrections['uncorrected_CL95s'][key])/corrections['uncorrected_CL95s'][key]*100:.2f}%")
+		print()
 
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.image import BboxImage

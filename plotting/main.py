@@ -12,6 +12,7 @@ rcParams.update({
 	"axes.labelsize": 16,
 	"xtick.labelsize": 12,
 	"ytick.labelsize": 12,
+    "axes.axisbelow": False,
 })
 
 # specfically for non-getdist plots
@@ -22,6 +23,7 @@ rcparams_nongetdist = {
 	"ytick.minor.size": 3,
 	"xtick.minor.visible": True,
 	"ytick.minor.visible": True,
+    "axes.axisbelow": False,
 }
 
 # Figure 1
@@ -131,14 +133,16 @@ def full_distribs_comparison(Delta_Neff=0.2,z_NR=1e3, plot_dir='plots/', figname
 	ax.text(0.075,0.425,r'$\Delta N_{\mathrm{eff}}={'+f'{Delta_Neff:.{2}f}'+'}$',fontsize=14,transform=ax.transAxes,color='k')
 	ax.text(0.075,0.35,r'$z_{\mathrm{NR}}=10^{'+str(np.log10(z_NR))+'}$',fontsize=14,transform=ax.transAxes,color='k')
 
-	legend_elements = [
-		Line2D([0], [0], color=cosmo_color('FD'), lw=1.5, label=r'$\mathrm{FD}$'),
-		Line2D([0], [0], color=cosmo_color('BE'), lw=1.5, label=r'$\mathrm{BE}$'),
-		Line2D([0], [0], color=cosmo_color('RD'), lw=1.5, label=r'$\mathrm{NT}$'),
-		Line2D([0], [0], color=cosmo_color('LNsharp'), lw=1.5, label=r'$\mathrm{LN}\;(\sigma_{\mathrm{LN}}=0.04)$'),
-		Line2D([0], [0], color=cosmo_color('LNwide'), lw=1.5, label=r'$\mathrm{LN}\;(\sigma_{\mathrm{LN}}=1.5)$'),		
+	# Add text labels for each line at top-left, descending
+	line_labels = [
+		(r'$\mathrm{FD}$', cosmo_color('FD')),
+		(r'$\mathrm{BE}$', cosmo_color('BE')),
+		(r'$\mathrm{NT}$', cosmo_color('RD')),
+		(r'$\mathrm{LN}\;(\sigma_{\mathrm{LN}}=0.04)$', cosmo_color('LNsharp')),
+		(r'$\mathrm{LN}\;(\sigma_{\mathrm{LN}}=1.5)$', cosmo_color('LNwide')),
 	]
-	ax.legend(handles=legend_elements, fontsize=14, frameon=False, ncols=1, handlelength=1.2, loc='upper left')
+	for i, (label, color) in enumerate(line_labels):
+		ax.text(0.05, 0.90 - i*0.08, label, fontsize=13, transform=ax.transAxes, color=color, weight='bold')
 
 	cbar_ax = inset_axes(ax, width="100%", height="100%",
                      bbox_to_anchor=(0.825, 0.35, 0.04, 0.6),
@@ -152,14 +156,6 @@ def full_distribs_comparison(Delta_Neff=0.2,z_NR=1e3, plot_dir='plots/', figname
 	cb1.set_label(r'$\sigma_\mathrm{LN}$', fontsize=16)
 	cb1.set_ticks(np.concatenate(([sigma_array[0]], np.linspace(0,sigma_array[-1],6)[1:])))
 	cb1.set_ticks(np.linspace(0,sigma_array[-1],31)[1:],minor=True)
-	# cbar_ax.tick_params(zorder=10)
-	# sigma_markers = np.linspace(0,sigma_array[-1],6)[1:-1]
-	# sigma_markers = [0.55]
-	# for sigma_marker in sigma_markers:
-	# 	# color = cmap(norm(sigma_marker))
-	# 	color = 'gray'
-	# 	cbar_ax.axhline(sigma_marker, color=color, lw=1, alpha=1)
-	# cb1.solids.set_alpha(0.7)
 
 	ax = plt.subplot(3, 1, 2)
 	plot_evolution(Delta_Neff,z_NR,sigma_array=sigma_array_CLASS)
@@ -167,6 +163,10 @@ def full_distribs_comparison(Delta_Neff=0.2,z_NR=1e3, plot_dir='plots/', figname
 	set_xy_lims(xmin=0.1*z_NR, xmax=10*z_NR, ymin=1, ymax=1.7)
 	set_xy_scales(xscale='log', yscale='linear')
 	ax.legend(fontsize=14, frameon=False, handlelength=1.2, handleheight=1.2)
+
+	# Add text labels for each line at top-left, descending
+	for i, (label, color) in enumerate(line_labels):
+		ax.text(0.05, 0.90 - i*0.08, label, fontsize=13, transform=ax.transAxes, color=color, weight='bold')
 
 	ax.set_xlabel(r"$z$",fontsize=16)
 	ax.set_ylabel(r"$\rho_\chi/\rho_\mathrm{asmpt}$",fontsize=16)
@@ -181,6 +181,12 @@ def full_distribs_comparison(Delta_Neff=0.2,z_NR=1e3, plot_dir='plots/', figname
 		set_xy_lims(xmin=2., xmax=2500, ymin=-0.008, ymax=0.0025)
 	else:
 		set_xy_lims(xmin=2., xmax=2500, ymin=-0.01, ymax=0.01)
+
+	for i, (label, color) in enumerate(line_labels):
+		if i<3:
+			ax.text(0.05, 0.90 - i*0.08, label, fontsize=13, transform=ax.transAxes, color=color, weight='bold')
+		else:
+			ax.text(0.15, 0.90 - (i-3)*0.08, label, fontsize=13, transform=ax.transAxes, color=color, weight='bold')
 
 	ax.set_xlabel(r"$\ell$")
 	ax.set_ylabel(r"$(C^{\rm TT}_\ell-C^{\rm TT}_\ell|_{{\rm FD}})/C^{\rm TT}_\ell|_{ {\rm FD}}$")
@@ -316,7 +322,7 @@ def LiMR3d_posterior(plot_dir='plots/', figname='3d_posterior.pdf', chain_dir=os
 	g.settings.colormap_scatter = mcolors.LinearSegmentedColormap.from_list('plasma_trunc', mpl.colormaps['plasma'](np.linspace(0, 0.95, 256)))
 	g.settings.colorbar_label_rotation = 90
 	samples = get_samples(g, roots=[root])
-	# samples[0].updateSettings({'contours': [0.95]}) # to plot only 95% contour
+	# samples[0].updateSettings({'contours': [0.95]}) # uncomment this line to plot only 95% contour
 	samples.append(samples[0]) # necessary to add contour lines to scatter plot
 
 	xmin = 0
@@ -339,104 +345,73 @@ def LiMR3d_posterior(plot_dir='plots/', figname='3d_posterior.pdf', chain_dir=os
 	fmax = current_max
 	fmin = -6
 
-	Dneffbound = True
-	if Dneffbound:
-		x_param, y_param = 'delta_Neff', 'log10z_tr'
+	# Plot annotations for the 1D bounds.
+	x_param, y_param = 'delta_Neff', 'log10z_tr'
 
+	ax = g.get_axes_for_params(x_param, y_param)
+	bayesian_color = IBM_cscheme()[2]
+	frequentist_color = IBM_cscheme()[0]
+	draw_bayesian_1d_bounds = True
+	draw_frequentist_1d_bounds = True
+	markers = {'Bayes':'<', 'Freq':'X'}
+
+	def draw_bounds(bound_dict, color, marker, draw_DR=False):
+		for bound_name, bound_values in bound_dict.items():
+			if bound_name == 'DR_bound':
+				if draw_DR:
+					ax.axvline(bound_values[1], c='gray', ls='--', lw=1.0, alpha=1)
+				continue
+			y = bound_values[0]
+			x_tail = bound_values[1]
+			ax.scatter([x_tail], [y], marker=marker, s=50, color=color, edgecolors='k', linewidths=0.5, zorder=5)
+
+	if draw_bayesian_1d_bounds:
 		bounds = {
-			'DR_bound': [min(mcmc_plot_lims['log10z_tr']),2.9533e-01], # from my DR contours, consistent with 2207.13133
-			'logzNR3_bound': [3,2.3081e-01],
-			'logzNR35_bound': [3.5,2.0805e-01],
-			'logzNR4_bound': [4,1.0345e-01],
-			'logzNR45_bound': [4.5,5.6053e-02],
-			'logzNR5_bound': [5,7.9728e-02],
+			'DR_bound': [min(mcmc_plot_lims['log10z_tr']), 2.9533e-01],
+			'logzNR3_bound': [3, 2.3081e-01],
+			'logzNR35_bound': [3.5, 2.0805e-01],
+			'logzNR4_bound': [4, 1.0345e-01],
+			'logzNR45_bound': [4.5, 5.6053e-02],
+			'logzNR5_bound': [5, 7.9728e-02],
 		}
+		draw_bounds(bounds, bayesian_color, markers['Bayes'], draw_DR=True)
 
-		ax = g.get_axes_for_params(x_param, y_param)
-		arrow_lw=2
-		arrow_head_width=0.1
-		arrow_base_height=0.2
-		arrow_head_length=0.01
-		arrow_dx = 0.03 
+	if draw_frequentist_1d_bounds:
+		freq_bounds = {
+			'DR_bound': [min(mcmc_plot_lims['log10z_tr']), 2.3e-01],
+			'logzNR3_bound': [3, 1.5e-01],
+			'logzNR35_bound': [3.5, 1.3e-01],
+			'logzNR4_bound': [4, 7.0e-02],
+			'logzNR45_bound': [4.5, 4.0e-02],
+			'logzNR5_bound': [5, 5.0e-02],
+		}
+		draw_bounds(freq_bounds, frequentist_color, markers['Freq'])
 
-		for bound in bounds:
-			if bound == 'DR_bound':
-				ax.axvline(bounds[bound][1], c='k', ls='--', lw=1.0, alpha=0.5)
-			else:
-				y = bounds[bound][0]
-				x_tail = bounds[bound][1]
-				x_head = x_tail - arrow_dx
+	legend_elements = [Line2D([0], [0], color='k', lw=1, ls='-', label='FD posterior')]
+	legend_labels = [r'$\mathrm{Posterior\; (FD)}$']
 
-				# Shaft
-				ax.plot([x_tail, x_head + arrow_head_length], [y, y],
-						color='k', lw=arrow_lw, alpha=1, solid_capstyle='butt')
-
-				# Base
-				ax.plot([x_tail, x_tail], [y - arrow_base_height/2, y + arrow_base_height/2],
-						color='k', lw=arrow_lw, alpha=1, solid_capstyle='butt')
-
-				# Arrowhead
-				head = Polygon(
-					[[x_head, y],
-					[x_head + arrow_head_length, y + arrow_head_width/2],
-					[x_head + arrow_head_length, y - arrow_head_width/2]],
-					closed=True, color='k', alpha=1, 
-				)
-				head.set_clip_box(ax.bbox)
-				head.set_clip_on(True)
-				ax.add_patch(head)
-		
-	class ArrowHandler(HandlerBase):
-		def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
-			y_mid = height / 2
-			head_length = width * 0.3
-			base_height = height 
-
-			# Shaft
-			shaft = Line2D(
-				[width, head_length], [y_mid, y_mid],
-				color='k', lw=1.5, solid_capstyle='butt', transform=trans
-			)
-			# Base
-			base = Line2D(
-				[width, width], [y_mid - base_height/2, y_mid + base_height/2],
-				color='k', lw=1.5, solid_capstyle='butt', transform=trans
-			)
-			# Arrowhead
-			head = Polygon(
-				[[0, y_mid],
-				[head_length, y_mid + height*0.3],
-				[head_length, y_mid - height*0.3]],
-				closed=True, color='k', transform=trans
-			)
-			return [shaft, base, head]
-
-	arrow_proxy = Line2D([0], [0], color='k')  # dummy handle
-
-	legend_elements = [
-		Line2D([0], [0], color='k', lw=1, ls='-', label='FD posterior'),
-		Line2D([0], [0], color='k', lw=1, ls='--', alpha=0.5, label='DR bound'),
-		arrow_proxy,
-	]
-
-	leg_labels = [
-		r'$95\%\;\mathrm{Posterior\; (FD)}$',
-		r'$<95\%\;\mathrm{U.L.\;(DR)}$',
-		r'$<95\%\;\mathrm{U.L.\;(FD_\mathrm{1D})}$',
-	]
+	if draw_bayesian_1d_bounds:
+		legend_elements.append(Line2D([0], [0], color=bayesian_color, marker=markers['Bayes'], linestyle='None', markersize=7, markerfacecolor=bayesian_color, markeredgecolor='k', markeredgewidth=0.5))
+		# legend_labels.append(r'$<95\%\;\mathrm{U.L.\;(FD_\mathrm{1D})}$')
+		legend_labels.append(r'$\mathrm{Bayes.\;U.L.\;(FD_\mathrm{1D})}$')
+		ax.text(0.305,2,r'$\mathrm{Bayes.\;U.L.\;(DR)}$',fontsize=11.5,color='gray',rotation=270)
+	
+	if draw_frequentist_1d_bounds:
+		legend_elements.append(Line2D([0], [0], color=frequentist_color, marker=markers['Freq'], linestyle='None', markersize=7, markerfacecolor=frequentist_color, markeredgecolor='k', markeredgewidth=0.5))
+		# legend_labels.append(r'$<95\%\;\mathrm{U.L.\;(FD_\mathrm{1D})}$')
+		legend_labels.append(r'$\mathrm{Freq.\;U.L.\;(FD_\mathrm{1D})}$')
 
 	ax.legend(
 		handles=legend_elements,
 		handlelength=1,
-		loc='upper right', 
-		frameon='true', 
-		edgecolor='black', 
-		facecolor='white', 
+		loc='upper right',
+		frameon='true',
+		edgecolor='black',
+		facecolor='white',
 		framealpha=1,
-		handler_map={arrow_proxy: ArrowHandler()},
-		labels = leg_labels,
+		labels=legend_labels,
 		fancybox=False,
-		)
+	)
 
 	# Fix colorbar size
 	old_pos = cb_ax.get_position()
@@ -445,14 +420,468 @@ def LiMR3d_posterior(plot_dir='plots/', figname='3d_posterior.pdf', chain_dir=os
 	g.last_colorbar.ax = new_cb_ax
 	g.last_colorbar._draw_all()
 	new_cb_ax.tick_params(labelsize=g.settings.axes_fontsize)
-	g.last_colorbar.set_label(r'$\log_{10}\left(f_\chi\right)$', fontsize=14, rotation=90, labelpad=3)
+	g.last_colorbar.set_label(r'$\log_{10}\left(f_\chi\right)$', fontsize=14, rotation=270, labelpad=16)
 	new_cb_ax.set_ylim(fmin, fmax)
 
 	g.fig.savefig(plot_dir+figname, bbox_inches='tight', pad_inches=0.1)
 	log(f'Saving: {plot_dir + figname}')
 
-
 # Figure 6
+def SquiRel_constraints(plot_dir='plots/', figname='SquiRel_constraints.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+
+	log('Generating SquiRel PR3 constraint contours')
+
+	params = [
+    'delta_Neff',
+    'log10z_tr',
+	'sigma',
+    ]
+
+	probes = [
+		'PR3',
+	]
+	nu_hierachs = [
+		'N_mnu=1_Mmnu=0.06',
+	]
+	cases = [
+		'FD',
+		'LN',
+		]
+
+	roots = [
+		case + '_' + probes[0] + '_' + nu_hierachs[0] + '_' for case in cases
+	] 
+
+	SquiRel_labels = [
+		r'$\mathrm{FD\;LiMR}$',
+		r'$\mathrm{SquiRel}$',
+	]
+
+	width_inch = 4
+	height_inch = 4
+	g = plots.get_subplot_plotter(chain_dir=chain_dir,width_inch=width_inch, subplot_size_ratio=height_inch/width_inch)
+	g.settings.scaling_factor = 1
+	g.settings.legend_fontsize = 13
+	samples = get_samples(g, roots=roots)
+
+	g.triangle_plot(
+		samples, 
+		params, 
+		filled=True,
+		param_limits=mcmc_plot_lims,
+		contour_args = [
+			{
+				# 'alpha':1,
+				# 'alpha':np.linspace(1,0.1,10)[i],
+				'color': cosmo_color(root.split('_')[0]),
+				'lw': 2,
+			} for i, root in enumerate(roots)
+		],
+		line_args = [
+			{
+				'alpha': 1,
+				'zorder': -1,
+				'color': cosmo_color(root.split('_')[0]),
+				'lw': 1,
+			} for i, root in enumerate(roots)
+		],
+		legend_labels = SquiRel_labels,
+		legend_loc = 'upper right',
+	)
+
+	for i, param in enumerate(params):
+		param_ax = g.get_axes_for_params(param)
+		param_ax.set_title('')
+		fig_pos = param_ax.get_position()
+		x_fig = fig_pos.x0 + 0.005 if i == 1 else fig_pos.x0 + fig_pos.width / 2
+		y_fig = fig_pos.y1
+		n_written = 0
+		for j, s in enumerate(samples[::-1]):
+			stats = s.getMargeStats()
+			par = stats.parWithName(param)
+			if par is not None and par.limits[0].limitType() != 'none':
+				limit_idx = 2 if par.limits[0].limitType() == 'one tail upper limit' else 1 # print 95% upper limits but 1 sigma symmetric limits
+				title_str = s.getInlineLatex(param, limit=limit_idx)
+
+				# if symmetric, replace ± with explicit ^{+err}_{-err}
+				if r'\pm' in title_str:
+					parts = title_str.split(r'\pm')
+					title_str = parts[0] + r'^{+' + parts[1].strip() + r'}_{-' + parts[1].strip() + r'}'
+				g.fig.text(
+					x_fig, y_fig + 0.005 + n_written * 0.05,
+					f'${title_str}$',
+					ha='left' if i == 1 else 'center', va='bottom',
+					fontsize=11,
+					color=IBM_cscheme()[2*j],
+				)
+				n_written += 1	
+	
+	# g.export(plot_dir+figname)
+	g.fig.savefig(plot_dir + figname, bbox_inches='tight', pad_inches=0.1)
+	log(f'Saving: {plot_dir + figname}')
+
+# Figure 7
+def SquiRel_forecasts(plot_dir='plots/', figname='SquiRel_forecasts.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+
+	log('Generating SquiRel forecast contours')
+
+	cs = [
+		IBM_cscheme()[2],
+		# IBM_cscheme()[0],
+		IBM_cscheme()[1],
+		IBM_cscheme()[3],
+		IBM_cscheme()[4],
+	]
+
+	params = [
+    'delta_Neff',
+    'log10z_tr',
+	'sigma',
+    ]
+
+	probes = [
+		# 'PR3',
+		'S4',
+	]
+	nu_hierachs = [
+		'N_mnu=1_Mmnu=0.06',
+	]
+	cases = [
+		'LN',
+		'LN_logzNR3FDfid',
+		'LN_logzNR4FDfid',
+		'LN_logzNR4NTfid',
+		]
+
+	roots = [case + '_' + probes[0] + '_' + nu_hierachs[0] + '_' for case in cases]
+
+	SquiRel_labels = [
+		# r'$\textit{Planck}\mathrm{\;PR3}$',
+		r'$\mathrm{S4\mbox{-}like}\;(\Lambda\mathrm{CDM\;Fid.})$',
+		r'$\mathrm{S4\mbox{-}like\;(LiMR1\;Fid.)}$',
+		r'$\mathrm{S4\mbox{-}like\;(LiMR2\;Fid.)}$',
+		r'$\mathrm{S4\mbox{-}like\;(LiMR3\;Fid.)}$',
+	]
+
+	scaling_factor = 0.75
+	width_inch = 8*scaling_factor
+	height_inch = 8*scaling_factor
+	g = plots.get_subplot_plotter(chain_dir=chain_dir,width_inch=width_inch, subplot_size_ratio=height_inch/width_inch)
+	g.settings.legend_fontsize = 16
+	samples = get_samples(g, roots=roots)
+
+	g.triangle_plot(
+		samples, 
+		params, 
+		filled=True,
+		param_limits=mcmc_plot_lims,
+		contour_args = [
+			{
+				# 'alpha':1,
+				# 'alpha':np.linspace(1,0.1,10)[i],
+				'color': cs[i], 
+				'lw': 2,
+			} for i, root in enumerate(roots)
+		],
+		line_args = [
+			{
+				'alpha': 1,
+				'zorder': -1,
+				'color': cs[i],
+				'lw': 1,
+			} for i, root in enumerate(roots)
+		],
+		legend_labels = SquiRel_labels,
+		legend_loc = 'upper right',
+	)
+	g.legend.set_bbox_to_anchor((1.0, 1.1))
+
+
+	fiducial_points = [
+		{'delta_Neff': 0.20, 'log10z_tr': 3.0, 'sigma': 0.55},
+		{'delta_Neff': 0.10, 'log10z_tr': 4.0, 'sigma': 0.55},
+		{'delta_Neff': 0.10, 'log10z_tr': 4.0, 'sigma': 1.12},
+	]
+
+	pairs = [
+		('delta_Neff', 'log10z_tr'),
+		('delta_Neff', 'sigma'),
+		('log10z_tr', 'sigma'),
+	]
+
+	for x_param, y_param in pairs:
+		ax = g.get_axes_for_params(x_param, y_param)
+		for fid in fiducial_points:
+			ax.plot(fid[x_param], fid[y_param], 
+				marker='*', markersize=9, color='k', zorder=10)
+
+	for i, param in enumerate(params):
+		param_ax = g.get_axes_for_params(param)
+		param_ax.set_title('')
+		fig_pos = param_ax.get_position()
+		x_fig = fig_pos.x0 + 0.005 if i == 1 else fig_pos.x0 + fig_pos.width / 2
+		y_fig = fig_pos.y1
+		n_written = 0
+		for j, s in enumerate(samples[::-1]):
+			stats = s.getMargeStats()
+			par = stats.parWithName(param)
+			if par is not None and par.limits[0].limitType() != 'none':
+				limit_idx = 2 if par.limits[0].limitType() == 'one tail upper limit' else 1 # print 95% upper limits but 1 sigma symmetric limits
+				title_str = s.getInlineLatex(param, limit=limit_idx)
+
+				# if symmetric, replace ± with explicit ^{+err}_{-err}
+				if r'\pm' in title_str:
+					parts = title_str.split(r'\pm')
+					title_str = parts[0] + r'^{+' + parts[1].strip() + r'}_{-' + parts[1].strip() + r'}'
+				g.fig.text(
+					x_fig, y_fig + 0.005 + n_written * 0.04,
+					f'${title_str}$',
+					ha='left' if i == 1 else 'center', va='bottom',
+					fontsize=13,
+					color=cs[::-1][j],
+				)
+				n_written += 1	
+	
+	g.fig.savefig(plot_dir + figname, bbox_inches='tight', pad_inches=0.1)
+	log(f'Saving: {plot_dir + figname}')
+
+# Figure 8
+def SO_vs_S4_forecast(plot_dir='plots/', figname='SO_vs_S4_forecast.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+
+	log('Generating SO vs S4 forecast contours')
+
+	cs = [
+		IBM_cscheme()[0],
+		IBM_cscheme()[3],
+	]
+
+	params = [
+    'delta_Neff',
+    'log10z_tr',
+	'sigma',
+    ]
+
+	probes = [
+		'SO',
+		'S4',
+	]
+	nu_hierachs = [
+		'N_mnu=1_Mmnu=0.06',
+	]
+	cases = [
+		'LN_logzNR4FDfid',
+		]
+
+	roots = [
+		cases[0] + '_' + probe + '_' + nu_hierachs[0] + '_' for probe in probes
+	] 
+
+	SquiRel_labels = [
+		r'$\mathrm{SO\mbox{-}like\;(LiMR2\;Fid.)}$',
+		r'$\mathrm{S4\mbox{-}like\;(LiMR2\;Fid.)}$',
+	]
+
+	width_inch = 4
+	height_inch = 4
+	g = plots.get_subplot_plotter(chain_dir=chain_dir,width_inch=width_inch, subplot_size_ratio=height_inch/width_inch)
+	g.settings.scaling_factor = 1
+	g.settings.legend_fontsize = 13
+	samples = get_samples(g, roots=roots)
+
+	g.triangle_plot(
+		samples, 
+		params, 
+		filled=True,
+		param_limits=mcmc_plot_lims,
+		contour_args = [
+			{
+				# 'alpha':1,
+				# 'alpha':np.linspace(1,0.1,10)[i],
+				'color': cs[i], 
+				'lw': 2,
+			} for i, root in enumerate(roots)
+		],
+		line_args = [
+			{
+				'alpha': 1,
+				'zorder': -1,
+				'color': cs[i],
+				'lw': 1,
+			} for i, root in enumerate(roots)
+		],
+		legend_labels = SquiRel_labels,
+		legend_loc = 'upper right',
+	)
+
+	fiducial_params = {
+    'delta_Neff': 0.10,
+    'log10z_tr': 4.0,
+    'sigma': 0.55,
+	}
+
+	pairs = [
+		('delta_Neff', 'log10z_tr'),
+		('delta_Neff', 'sigma'),
+		('log10z_tr', 'sigma'),
+	]
+
+	for x_param, y_param in pairs:
+		ax = g.get_axes_for_params(x_param, y_param)
+		ax.plot(fiducial_params[x_param], fiducial_params[y_param], 
+				marker='*', markersize=9, color='k', zorder=10)
+
+	for i, param in enumerate(params):
+		param_ax = g.get_axes_for_params(param)
+		param_ax.set_title('')
+		fig_pos = param_ax.get_position()
+		x_fig = fig_pos.x0 + 0.005 if i == 1 else fig_pos.x0 + fig_pos.width / 2
+		y_fig = fig_pos.y1
+		n_written = 0
+		for j, s in enumerate(samples[::-1]):
+			stats = s.getMargeStats()
+			par = stats.parWithName(param)
+			if par is not None and par.limits[0].limitType() != 'none':
+				limit_idx = 2 if par.limits[0].limitType() == 'one tail upper limit' else 1 # print 95% upper limits but 1 sigma symmetric limits
+				title_str = s.getInlineLatex(param, limit=limit_idx)
+				print(param, par.limits[0].limitType(), title_str)
+
+				# if symmetric, replace ± with explicit ^{+err}_{-err}
+				if r'\pm' in title_str:
+					parts = title_str.split(r'\pm')
+					title_str = parts[0] + r'^{+' + parts[1].strip() + r'}_{-' + parts[1].strip() + r'}'
+				g.fig.text(
+					x_fig, y_fig + 0.005 + n_written * 0.05,
+					f'${title_str}$',
+					ha='left' if i == 1 else 'center', va='bottom',
+					fontsize=11,
+					color=cs[::-1][j],
+				)
+				n_written += 1	
+	
+	# g.export(plot_dir+figname)
+	g.fig.savefig(plot_dir + figname, bbox_inches='tight', pad_inches=0.1)
+	log(f'Saving: {plot_dir + figname}')
+
+# Figure 9
+def pessimistic_S4_forecast(plot_dir='plots/', figname='S4_pessimistic_forecast.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
+
+	log('Generating best case LiMR S4 forecast contour in case SO measures LCDM')
+
+	cs = [
+		IBM_cscheme()[1],
+		IBM_cscheme()[3],
+	]
+
+	params = [
+    'delta_Neff',
+    'log10z_tr',
+	'sigma',
+    ]
+
+	probes = [
+		'S4',
+	]
+	nu_hierachs = [
+		'N_mnu=1_Mmnu=0.06',
+	]
+	cases = [
+		'LN_logzNR4FDfid_SO_bestcase',
+		'LN_logzNR4FDfid',
+		]
+
+	roots = [
+		case + '_' + probes[0] + '_' + nu_hierachs[0] + '_' for case in cases
+	] 
+
+	SquiRel_labels = [
+		r'$\mathrm{S4\mbox{-}like\;(LiMR4\;Fid.)}$',
+		r'$\mathrm{S4\mbox{-}like\;(LiMR2\;Fid.)}$',
+	]
+
+	width_inch = 4
+	height_inch = 4
+	g = plots.get_subplot_plotter(chain_dir=chain_dir,width_inch=width_inch, subplot_size_ratio=height_inch/width_inch)
+	g.settings.scaling_factor = 1
+	g.settings.legend_fontsize = 13
+	samples = get_samples(g, roots=roots)
+
+	g.triangle_plot(
+		samples, 
+		params, 
+		filled=True,
+		param_limits=mcmc_plot_lims,
+		contour_args = [
+			{
+				# 'alpha':1,
+				# 'alpha':np.linspace(1,0.1,10)[i],
+				'color': cs[i], 
+				'lw': 2,
+			} for i, root in enumerate(roots)
+		],
+		line_args = [
+			{
+				'alpha': 1,
+				'zorder': -1,
+				'color': cs[i],
+				'lw': 1,
+			} for i, root in enumerate(roots)
+		],
+		legend_labels = SquiRel_labels,
+		legend_loc = 'upper right',
+	)
+
+	fiducial_points = [
+		{'delta_Neff': 0.10, 'log10z_tr': 4.0, 'sigma': 0.55},
+		{'delta_Neff': 0.03, 'log10z_tr': 4.0, 'sigma': 0.55},
+	]
+
+	pairs = [
+		('delta_Neff', 'log10z_tr'),
+		('delta_Neff', 'sigma'),
+		('log10z_tr', 'sigma'),
+	]
+
+	for x_param, y_param in pairs:
+		ax = g.get_axes_for_params(x_param, y_param)
+		for fid in fiducial_points:
+			ax.plot(fid[x_param], fid[y_param], 
+				marker='*', markersize=9, color='k', zorder=10)
+
+	for i, param in enumerate(params):
+		param_ax = g.get_axes_for_params(param)
+		param_ax.set_title('')
+		fig_pos = param_ax.get_position()
+		x_fig = fig_pos.x0 + 0.005 if i == 1 else fig_pos.x0 + fig_pos.width / 2
+		y_fig = fig_pos.y1
+		n_written = 0
+		for j, s in enumerate(samples[::-1]):
+			stats = s.getMargeStats()
+			par = stats.parWithName(param)
+			if par is not None and par.limits[0].limitType() != 'none':
+				limit_idx = 2 if par.limits[0].limitType() == 'one tail upper limit' else 1 # print 95% upper limits but 1 sigma symmetric limits
+				if param != 'sigma' or j == 0:
+					title_str = s.getInlineLatex(param, limit=limit_idx)
+				else:
+					title_str = r'\sigma_\mathrm{LN} < 1.39' # had to hardcode in as 2sigma< instead of 95%< since montepython won't compute latter
+
+				# if symmetric, replace ± with explicit ^{+err}_{-err}
+				if r'\pm' in title_str:
+					parts = title_str.split(r'\pm')
+					title_str = parts[0] + r'^{+' + parts[1].strip() + r'}_{-' + parts[1].strip() + r'}'
+				g.fig.text(
+					x_fig, y_fig + 0.005 + n_written * 0.05,
+					f'${title_str}$',
+					ha='left' if i == 1 else 'center', va='bottom',
+					fontsize=11,
+					color=cs[::-1][j],
+				)
+				n_written += 1	
+	
+	# g.export(plot_dir+figname)
+	g.fig.savefig(plot_dir + figname, bbox_inches='tight', pad_inches=0.1)
+	log(f'Saving: {plot_dir + figname}')
+
+# Figure 10
 @mpl.rc_context(rcparams_nongetdist)
 def DNeff_profiles(plot_dir='plots/', figname='DNeff_profiles.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
 	
@@ -494,6 +923,13 @@ def DNeff_profiles(plot_dir='plots/', figname='DNeff_profiles.pdf', chain_dir=os
 	ax.set_xlabel(r'$\Delta N_{\rm eff}$')
 	# ax.set_ylabel(r'$\Delta \chi^2$')
 
+	ax.legend(
+		[Line2D([0], [0], color='k', lw=1.5), _FDHandle()],
+		[r'$\rm DR$', r'$\rm FD_{1D}$'],
+		handler_map={_FDHandle: HandlerColorbar(cmap)},
+		fontsize=14, handlelength=1.2, loc='lower right'
+	)
+
 	fig.tight_layout(rect=[0, 0, 0.92, 1])
 	# fig.subplots_adjust(wspace=0.0)
 
@@ -508,123 +944,18 @@ def DNeff_profiles(plot_dir='plots/', figname='DNeff_profiles.pdf', chain_dir=os
 
 	save_fig(figname, plot_dir)
 
-# Figure 7
-def SquiRel_contours(plot_dir='plots/', figname='SquiRel_contours.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
-
-	log('Generating SquiRel contours')
-
-	params = [
-    'delta_Neff',
-    'log10z_tr',
-	'sigma',
-    ]
-
-	probes = [
-		'PR3',
-		'S4',
-	]
-	nu_hierachs = [
-		'N_mnu=1_Mmnu=0.06',
-	]
-	cases = [
-		'LN',
-		'LN_logzNR4FDfid',
-		]
-
-	roots = [
-		cases[0] + '_' + probe + '_' + nu_hierachs[0] + '_' for probe in probes
-	] 
-	roots.append(cases[1] + '_' + probes[1] + '_' + nu_hierachs[0] + '_' )
-
-	SquiRel_labels = [
-		r'$\textit{Planck}\mathrm{\;PR3}$',
-		r'$\mathrm{S4\mbox{-}like}\;(\Lambda\mathrm{CDM\;Fid.})$',
-		r'$\mathrm{S4\mbox{-}like\;(LiMR\;Fid.)}$',
-	]
-
-	width_inch = 8
-	height_inch = 8
-	g = plots.get_subplot_plotter(chain_dir=chain_dir,width_inch=width_inch, subplot_size_ratio=height_inch/width_inch)
-	g.settings.legend_fontsize = 16
-	samples = get_samples(g, roots=roots)
-
-	g.triangle_plot(
-		samples, 
-		params, 
-		filled=True,
-		param_limits=mcmc_plot_lims,
-		contour_args = [
-			{
-				# 'alpha':1,
-				# 'alpha':np.linspace(1,0.1,10)[i],
-				'color': IBM_cscheme()[::-1][2*i], # invert coloring to mimic vs LCDM contours
-				'lw': 2,
-			} for i, root in enumerate(roots)
-		],
-		line_args = [
-			{
-				'alpha': 1,
-				'zorder': -1,
-				'color': IBM_cscheme()[::-1][2*i],
-				'lw': 1,
-			} for i, root in enumerate(roots)
-		],
-		legend_labels = SquiRel_labels,
-		legend_loc = 'upper right',
-	)
-
-	fiducial_params = {
-    'delta_Neff': 0.10,
-    'log10z_tr': 4.0,
-    'sigma': 0.55,
-	}
-
-	pairs = [
-		('delta_Neff', 'log10z_tr'),
-		('delta_Neff', 'sigma'),
-		('log10z_tr', 'sigma'),
-	]
-
-	for x_param, y_param in pairs:
-		ax = g.get_axes_for_params(x_param, y_param)
-		ax.plot(fiducial_params[x_param], fiducial_params[y_param], 
-				marker='*', markersize=9, color='k', zorder=10)
-
-	for i, param in enumerate(params):
-		param_ax = g.get_axes_for_params(param)
-		param_ax.set_title('')
-		fig_pos = param_ax.get_position()
-		x_fig = fig_pos.x0 + fig_pos.width / 2
-		y_fig = fig_pos.y1
-		n_written = 0
-		for j, s in enumerate(samples[::-1]):
-			stats = s.getMargeStats()
-			par = stats.parWithName(param)
-			if par is not None and par.limits[0].limitType() != 'none':
-				limit_idx = 2 if par.limits[0].limitType() == 'one tail upper limit' else 1 # print 95% upper limits but 1 sigma symmetric limits
-				title_str = s.getInlineLatex(param, limit=limit_idx)
-
-				# if symmetric, replace ± with explicit ^{+err}_{-err}
-				if r'\pm' in title_str:
-					parts = title_str.split(r'\pm')
-					title_str = parts[0] + r'^{+' + parts[1].strip() + r'}_{-' + parts[1].strip() + r'}'
-				g.fig.text(
-					x_fig, y_fig + 0.005 + n_written * 0.035,
-					f'${title_str}$',
-					ha='center', va='bottom',
-					fontsize=13,
-					color=IBM_cscheme()[2*j],
-				)
-				n_written += 1	
-	
-	# g.export(plot_dir+figname)
-	g.fig.savefig(plot_dir + figname, bbox_inches='tight', pad_inches=0.1)
-	log(f'Saving: {plot_dir + figname}')
-
-# Figure 8
+# Figure 11
 def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', chain_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/chains')):
 	
 	log('Generating full comparison contours for different datasets and analysis choices.')
+
+	cs = [
+		'#dc267f',
+		# '#785ef0',
+		'#648fff',
+		# '#ffb000',
+		'#fe6100',
+	]
 
 	params = [
     'H0',
@@ -639,9 +970,11 @@ def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', ch
 
 	probes = [
 		'PR3',
+		# 'PR4',
+		# 'PR3+eBOSS',
+		# 'PR3+lens',
 		'PR4',
-		'PR3+eBOSS',
-		'PR3+lens',
+
 	]
 	nu_hierachs = [
 		'N_mnu=1_Mmnu=0.06',
@@ -657,8 +990,8 @@ def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', ch
 	dataset_labels = [
 		'PR3',
 		'PR4',
-		'PR3+BAO',
-		'PR3+lens.',
+		# 'PR3+BAO',
+		# 'PR3+lens.',
 		r'$\mathrm{PR3}\;(\Sigma m_\nu = 0.11\,\mathrm{eV})$',
 	]
 
@@ -677,7 +1010,7 @@ def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', ch
 			{
 				# 'alpha':0.1,
 				# 'alpha':np.linspace(1,0.1,10)[i],
-				'color': IBM_cscheme()[i],
+				'color': cs[i],
 				'lw': 2,
 			} for i, root in enumerate(roots)
 		],
@@ -685,7 +1018,7 @@ def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', ch
 			{
 				'alpha': 1,
 				'zorder': -1,
-				'color': IBM_cscheme()[i],
+				'color': cs[i],
 				'lw': 1,
 			} for i, root in enumerate(roots)
 		],
@@ -699,14 +1032,18 @@ def dataset_triangle(plot_dir='plots/', figname='full_datasets_triangle.pdf', ch
 if __name__ == '__main__':
 	log('Starting main.py')
 
-	density = input('[main.py] Densities (y/n): ')
-	gen_cls = input('[main.py] LCDM vs DR vs LiMR Cls (y/n): ')
-	dists = input('[main.py] Distributions (y/n): ')
-	LiMR_triangle = input('[main.py] LCDM vs DR vs LiMR triangle (y/n): ')
-	color_posterior = input('[main.py] Scatter plot comparison (y/n): ')
-	profiles = input('[main.py] Profiles (y/n): ')
-	SquiRel_triangle = input('[main.py] SquiRel contours (y/n): ')
-	compare_datasets = input('[main.py] Dataset contours (y/n): ')
+	density = input('[main.py] Fig. 1 (y/n): ')
+	gen_cls = input('[main.py] Fig. 2 (y/n): ')
+	dists = input('[main.py] Fig. 3 (y/n): ')
+	LiMR_triangle = input('[main.py] Fig. 4 (y/n): ')
+	color_posterior = input('[main.py] Fig. 5 (y/n): ')
+	squirel_constraints = input('[main.py] Fig. 6 (y/n): ')
+	squirel_forecasts = input('[main.py] Fig. 7 (y/n): ')
+	so_forecast = input('[main.py] Fig. 8 (y/n): ')
+	pessimistic_forecast = input('[main.py] Fig. 9 (y/n): ')
+	profiles = input('[main.py] Fig. 10 (y/n): ')
+	compare_datasets = input('[main.py] Fig. 11 (y/n): ')
+
 
 	if density == 'y':
 		cosmo_densities()
@@ -729,7 +1066,9 @@ if __name__ == '__main__':
 		LiMR3d_posterior()
 	if profiles == 'y':
 		DNeff_profiles()
-	if SquiRel_triangle == 'y':
-		SquiRel_contours()
+	if squirel_constraints == 'y':
+		SquiRel_constraints()
 	if compare_datasets == 'y':
 		dataset_triangle()
+	if squirel_forecasts == 'y':
+		SquiRel_forecasts()

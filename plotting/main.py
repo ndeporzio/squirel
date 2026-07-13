@@ -1068,7 +1068,13 @@ if __name__ == '__main__':
 		DNeff_profiles()
 	if squirel_constraints == 'y':
 		SquiRel_constraints()
-	if compare_datasets == 'y':
-		dataset_triangle()
 	if squirel_forecasts == 'y':
 		SquiRel_forecasts()
+	if so_forecast == 'y':
+		SO_vs_S4_forecast()
+	if pessimistic_forecast == 'y':
+		pessimistic_S4_forecast()
+	if profiles == 'y':
+		DNeff_profiles()
+	if compare_datasets == 'y':
+		dataset_triangle()
